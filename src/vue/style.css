@@ -1,0 +1,92 @@
+.main {
+    padding: 20px;
+}
+
+.userInputUrlBox {
+    display: flex;
+}
+
+.input-with-select {
+    margin-right: 15px;
+}
+
+.userInputUrlTool {
+    display: flex;
+    justify-content: space-between
+}
+
+.exitYourInformationBox {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.exitYourInformationBox1 {
+    width: 50%;
+}
+
+.exitYourInformationBox1,
+.exitYourInformationBox2 {
+    flex-direction: column;
+}
+
+.terminalContainer {
+    display: flex;
+    gap: 10px;
+    background-color: #2e2e2e;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    height: 160px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.leftWindow, .rightWindow {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    overflow-y: auto; /* 使窗口竖向滚动 */
+    height: 100%;
+}
+
+.leftWindow {
+    width: 40%;
+}
+
+.rightWindow {
+    width: 60%;
+    max-height: 100%;
+    overflow-y: auto; /* 使右侧窗口竖向滚动 */
+}
+
+.outExtraErrorLog,
+.outLog {
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap; /* 保持输出格式 */
+    word-wrap: break-word; /* 确保长文本换行 */
+}
+
+.terminal {
+    display: block; /* 保证换行 */
+    white-space: pre-wrap; /* 自动换行 */
+    word-wrap: break-word; /* 确保长单词换行 */
+}
+
+/* 隐藏滚动条 */
+.leftWindow::-webkit-scrollbar, .rightWindow::-webkit-scrollbar {
+    width: 0; /* 隐藏滚动条的宽度 */
+    background: transparent; /* 背景设置为透明 */
+}
+
+/* 保留滚动功能 */
+.leftWindow, .rightWindow {
+    overflow-y: scroll; /* 保留竖向滚动 */
+}
+
+.logText {
+    padding: 5px;
+}
+
+.userInputUrlTool > * {
+    margin: 0;
+}
