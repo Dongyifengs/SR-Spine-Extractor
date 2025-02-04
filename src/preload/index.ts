@@ -1,7 +1,8 @@
-import { contextBridge, ipcRenderer} from "electron";
+import {contextBridge, ipcRenderer} from "electron";
+import type {SpineObject} from "../extra";
 
-contextBridge.exposeInMainWorld('demo', {
-    count: (count: number) => {
-        ipcRenderer.send("count", count);
+contextBridge.exposeInMainWorld('main', {
+    handle: async (url: string): Promise<SpineObject[]> => {
+        return await ipcRenderer.invoke("handle", url) as SpineObject[];
     }
 });

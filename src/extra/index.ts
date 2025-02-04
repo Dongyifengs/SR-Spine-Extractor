@@ -8,4 +8,6 @@ export type SpineObject = {
     json: unknown;
 }
 
-declare async function handle(url: string): Promise<SpineObject[]>;
+export async function handle(url: string): Promise<SpineObject[]> {
+    return [];
+}

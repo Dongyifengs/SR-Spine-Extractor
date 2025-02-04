@@ -1,13 +1,15 @@
 import {app, BrowserWindow, Menu, ipcMain} from "electron";
 import {startingDevServer} from "./utils/DevUtils";
 import {join, join as pathJoin} from "path";
+import {handle} from "./extra";
 
 const development = true;
 const createWindow = async () => {
     Menu.setApplicationMenu(null);
     const win = new BrowserWindow({
-        width: 1540,
-        height: 836,
+        width: 600,
+        height: 400,
+        resizable: false,
         webPreferences: {
             preload: join(__dirname, "preload/index.js")
         }
@@ -27,9 +29,8 @@ const createWindow = async () => {
 
 app.whenReady().then(() => {
     createWindow().then(() => {
-        console.log("[electron] running");
-        ipcMain.on("count", (event, count: number) => {
-            console.log("The counter now are: ", count);
+        ipcMain.handle("handle", async (event, url: string) => {
+            return await handle(url);
         })
     })
 
