@@ -224,5 +224,6 @@ dist
 # *.iml
 # *.ipr
 
-bun.lock*
 build/
+*.lock
+*.lockb
