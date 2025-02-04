@@ -3,6 +3,7 @@ export type ResourceDefinition = {
     url: URL | string;
 }
 export type SpineObject = {
+    name: string,
     resources: ResourceDefinition[],
     atlas: string;
     json: unknown;

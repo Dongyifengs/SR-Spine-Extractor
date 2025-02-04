@@ -375,6 +375,7 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
             .map(e => e.replace(".png", ""))
             .map(e => ({name: e, url: imagesData[e]}));
         spineObjects.push({
+            name: spineDescription.name,
             atlas: atlasRes,
             json: jsonRes,
             resources: res
