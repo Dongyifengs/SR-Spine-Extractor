@@ -2,8 +2,7 @@
   <div class="main">
     <!-- 用户输入URL框 -->
     <div class="userInputUrlBox">
-      <el-input v-model="userInputUrl" style="max-width: 600px" placeholder="请输入网页地址："
-                class="input-with-select"></el-input>
+      <el-input v-model="userInputUrl" style="max-width: 600px" placeholder="请输入网页地址：" class="input-with-select"></el-input>
       <el-button type="warning" @click="paste()">粘贴</el-button>
       <el-button type="danger" @click="clear()">清除</el-button>
       <el-button type="success" @click="parsing()">解析</el-button>
@@ -124,7 +123,7 @@ const spinePath = () => {
     confirmButtonText: '完成',
     cancelButtonText: '取消',
     inputPattern:
-        /^(?:(?:[a-zA-Z]:[\\/]|\\|\/)?(?:[\w\s!@#$%^&*()-_+=.,;:'"~`]+[\\/]?)*)(Spine(?:\.com)?)$/,
+        /^((?:[a-zA-Z]:[\\/]|\\|\/)?(?:[\w\s!@#$%^&*()-_+=.,;:'"~`]+[\\/]?)*)(Spine(?:\.com)?)$/,
     inputErrorMessage: '无效路径',
   })
       .then(({value}) => {
