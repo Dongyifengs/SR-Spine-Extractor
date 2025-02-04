@@ -1,4 +1,4 @@
-import {Literal, parse, Property} from "esprima-next";
+import {parse} from "esprima-next";
 import {traverse} from "estraverse";
 import {generate} from "escodegen";
 import * as ESTree from "estree";
@@ -42,6 +42,12 @@ type ScriptHandleResult = {
     resourceMap: ResourceMapEntry[],
     images: ImageResourceDescription[]
 }
+type NameDefinition = {
+     name: string;
+     id: string;
+}
+type OtherDefinition = {}
+
 const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
     const textFromUrl = await getTextFromUrl(scriptUrl);
     const ast = parse(textFromUrl) as ESTree.Program;
