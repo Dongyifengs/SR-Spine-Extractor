@@ -2,6 +2,7 @@ import {parse} from "esprima-next";
 import {traverse} from "estraverse";
 import {generate} from "escodegen";
 import * as ESTree from "estree";
+import {ResourceDefinition, SpineObject} from "./src/extra";
 
 const getTextFromUrl = async (url: URL) => {
     const response = await fetch(url);
@@ -35,26 +36,30 @@ type ImageResourceDescription = {
 }
 type ResourceMapEntry = {
     id: number;
-    value: string | object;
+    value: string | URL | object;
+    type: "URL" | "CONTENT" | "VAR"
 };
+type NameDefinition = {
+    name: string;
+    id: number;
+}
 type ScriptHandleResult = {
     spine: SpineDescription[],
     resourceMap: ResourceMapEntry[],
-    images: ImageResourceDescription[]
+    resourceLoadedMap: ResourceMapEntry[]
+    images: ImageResourceDescription[],
+    names: NameDefinition[]
 }
-type NameDefinition = {
-     name: string;
-     id: string;
-}
-type OtherDefinition = {}
 
-const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
+const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHandleResult> => {
     const textFromUrl = await getTextFromUrl(scriptUrl);
-    const ast = parse(textFromUrl) as ESTree.Program;
+    const ast = parse(textFromUrl) as unknown as ESTree.Program;
     const result: ScriptHandleResult = {
         spine: [],
         resourceMap: [],
+        resourceLoadedMap: [],
         images: [],
+        names: []
     };
     traverse(ast, {
         enter(node, parent) {
@@ -92,9 +97,14 @@ const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
                     const [src, id, type] = [properties[srcIndex] as ESTree.Property, properties[idIndex] as ESTree.Property, properties[typeIndex] as ESTree.Property].map(e => e.value);
                     if (src.type !== "CallExpression") return;
                     if (id.type !== "Literal") return;
+                    if (typeof id.value !== "string") return;
                     if (type.type !== "Literal") return;
-                    console.log(id.value)
-                    console.log(generate(src))
+                    if (type.value !== "image") return;
+                    if (src.arguments.length !== 1) return;
+                    const arg = src.arguments[0];
+                    if (arg.type !== "Literal") return;
+                    if (typeof arg.value !== "number") return;
+                    result.images.push({id: id.value, src: arg.value})
                 }
             }
             if (node.type === "Property") {
@@ -104,34 +114,62 @@ const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
                 if (typeof keyValue !== "number") return;
                 const value = node.value;
                 if (value.type !== "FunctionExpression") return;
-                traverse(value.body, {
-                    enter(node) {
-                        if (node.type !== "AssignmentExpression") return;
-                        const left = node.left;
-                        if (left.type !== "MemberExpression") return;
-                        const leftProperty = left.property;
-                        if (leftProperty.type !== "Identifier") return;
-                        if (leftProperty.name !== "exports") return;
-                        const right = node.right;
-                        if (right.type !== "Literal") return;
-                        const rightValue = right.value;
-                        if (typeof rightValue !== "string") return;
-                        // console.log(rightValue);
-                    }
-                })
+                if (value.body.type !== "BlockStatement") return;
+                const body = value.body.body.filter(e => !(e.type === "ExpressionStatement" && e.expression.type === "Literal" && e.expression.value === "use strict"));
+                if (body.length !== 1) return;
+                const firstLine = body[0];
+                if (firstLine.type !== "ExpressionStatement") return;
+                const firstExpress = firstLine.expression;
+                if (firstExpress.type !== "AssignmentExpression") return;
+                const left = firstExpress.left;
+                if (left.type !== "MemberExpression") return;
+                const leftProperty = left.property;
+                if (leftProperty.type !== "Identifier") return;
+                if (leftProperty.name !== "exports") return;
+                const right = firstExpress.right;
+                if (right.type === "Literal") {
+                    if (typeof right.value !== "string") return;
+                    result.resourceLoadedMap.push({id: keyValue, value: right.value, type: "CONTENT"});
+                }
+                if (right.type === "BinaryExpression") {
+                    if (right.operator !== "+") return;
+                    const url = right.right;
+                    if (url.type !== "Literal") return;
+                    if (typeof url.value !== "string") return;
+                    result.resourceLoadedMap.push({
+                        id: keyValue,
+                        value: new URL("./" + url.value, baseUrl),
+                        type: "URL"
+                    });
+                }
+                if (right.type === "CallExpression") {
+                    const callee = right.callee;
+                    if (callee.type !== "MemberExpression") return;
+                    const obj = callee.object;
+                    const calleeProperty = callee.property;
+                    if (obj.type !== "Identifier" || calleeProperty.type !== "Identifier") return;
+                    if (obj.name !== "JSON" || calleeProperty.name !== "parse") return;
+                    const args = right.arguments;
+                    if (args.length !== 1) return;
+                    const rawJsonText = args[0];
+                    if (rawJsonText.type !== "Literal") return;
+                    result.resourceMap.push({
+                        id: keyValue,
+                        value: JSON.parse(rawJsonText.value as string),
+                        type: "CONTENT"
+                    })
+                }
             }
             if (node.type === "CallExpression") {
                 if (node.arguments.length !== 1) return;
                 const arg = node.arguments[0];
                 if (arg.type !== "ArrayExpression") return;
                 if (!arg.elements.every(e => e && e.type === "FunctionExpression")) return;
-                const result = arg.elements.map(e => {
+                arg.elements.forEach((e, index) => {
                     if (e?.type !== "FunctionExpression") return;
-                    const body: ESTree.BlockStatement = e.body;
-                    if (body.body.length !== 1) {
-                        return;
-                    }
-                    const firstLine = body.body[0];
+                    const body = e.body.body.filter(e => !(e.type === "ExpressionStatement" && e.expression.type === "Literal" && e.expression.value === "use strict"));
+                    if (body.length !== 1) return;
+                    const firstLine = body[0];
                     if (firstLine.type !== "ExpressionStatement") return;
                     const firstExpress = firstLine.expression;
                     if (firstExpress.type !== "AssignmentExpression") return;
@@ -141,9 +179,12 @@ const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
                     if (leftProperty.type !== "Identifier") return;
                     if (leftProperty.name !== "exports") return;
                     const right = firstExpress.right;
+                    if (right.type === "Identifier") {
+                        result.resourceMap.push({id: index, value: right.name, type: "VAR"});
+                    }
                     if (right.type === "Literal") {
                         if (typeof right.value !== "string") return;
-                        return right.value;
+                        result.resourceMap.push({id: index, value: right.value, type: "CONTENT"})
                     }
                     if (right.type === "CallExpression") {
                         const callee = right.callee;
@@ -156,23 +197,107 @@ const handleScriptTag = async (scriptUrl: URL): Promise<ScriptHandleResult> => {
                         if (args.length !== 1) return;
                         const rawJsonText = args[0];
                         if (rawJsonText.type !== "Literal") return;
-                        return JSON.parse(rawJsonText.value as string);
+                        result.resourceMap.push({
+                            id: index,
+                            value: JSON.parse(rawJsonText.value as string),
+                            type: "CONTENT"
+                        })
                     }
                 });
-                if (result.every(e => !e)) return;
-                console.log(result.length);
+            }
+            if (node.type === "AssignmentExpression") {
+                const left = node.left;
+                const right = node.right;
+                if (left.type !== "Identifier") return;
+                if (right.type !== "CallExpression") return;
+                const args = right.arguments;
+                if (args.length !== 1) return;
+                const arg = args[0];
+                if (arg.type !== "Literal") return;
+                const v = arg.value;
+                if (typeof v !== "number") return;
+                result.names.push({
+                    id: v,
+                    name: left.name
+                });
             }
         }
     })
     return result;
 }
+
+const remap = (original: ScriptHandleResult): SpineObject[] => {
+    const getResourceObj = (id: number) => {
+        const resourceMapEntry = original.resourceMap.find(e => e.id === id);
+        if (resourceMapEntry) return resourceMapEntry;
+        return original.resourceLoadedMap.find(e => e.id === id);
+    }
+    const getResource = (id: number, counter: number = 0): (URL | string | object) | null => {
+        if (counter > 5) return null;
+        const obj = getResourceObj(id);
+        if (!obj) return null;
+        if (obj.type !== "VAR") return obj.value;
+        const nameObj = original.names.filter(e => e.name === obj.value);
+        if (nameObj.length === 0) return null;
+        const resource = nameObj.map(e => getResource(e.id, counter + 1)).find(e => !!e);
+        if (!resource) return null;
+        return resource;
+    }
+    const imagesData: Record<string, URL | string> = {};
+    for (let image of original.images) {
+        const res = getResource(image.src) as (URL | string) | null;
+        if (!res) {
+            console.warn(`图片：${image.id}缺少资源定义`);
+            continue;
+        }
+        imagesData[image.id] = res;
+    }
+    const spineObjects: SpineObject[] = [];
+    for (let spineDescription of original.spine) {
+        const jsonRes = getResource(spineDescription.json) as unknown;
+        const atlasRes = getResource(spineDescription.atlas) as string;
+        if (!jsonRes) {
+            console.warn(`spine动画：${spineDescription.name} 缺少JSON文件`);
+            continue;
+        }
+        if (!atlasRes) {
+            console.warn(`spine动画：${spineDescription.name} 缺少atlas文件`);
+            continue;
+        }
+        const res: ResourceDefinition[] = atlasRes.split("\n").filter(e => e.endsWith(".png"))
+            .map(e => e.replace(".png", ""))
+            .map(e => ({name: e, url: imagesData[e]}));
+        spineObjects.push({
+            atlas: atlasRes,
+            json: jsonRes,
+            resources: res
+        });
+    }
+    return spineObjects;
+}
+
 const main = async (url: string) => {
     const baseUrl = new URL(url);
     const html = await getTextFromUrl(baseUrl);
-    const scripts = (await Promise.all(getScripts(html).map(e => new URL(e, url)).map(handleScriptTag)));
-    console.log(scripts);
+    const scripts = (await Promise.all(getScripts(html).map(e => new URL(e, url)).map(e => handleScriptTag(e, baseUrl))));
+    const totalData: ScriptHandleResult = {
+        spine: [],
+        images: [],
+        names: [],
+        resourceLoadedMap: [],
+        resourceMap: []
+    };
+    for (let script of scripts) {
+        totalData.spine.push(...script.spine);
+        totalData.images.push(...script.images);
+        totalData.names.push(...script.names);
+        totalData.resourceLoadedMap.push(...script.resourceLoadedMap);
+        totalData.resourceMap.push(...script.resourceMap);
+    }
+    console.log(totalData.spine)
+    const data = remap(totalData);
 }
 
-main("https://act.mihoyo.com/sr/event/e20231215version-92kbcf/index.html?game_biz=hkrpg_cn&mhy_presentation_style=fullscreen&mhy_landscape=true&mhy_hide_status_bar=true&mode=fullscreen&utm_source=bbs&utm_medium=mys&utm_campaign=post").catch(e => {
+main("https://webstatic.mihoyo.com/ys/event/e20220703prev-wiz6/index.html?game_biz=hk4e_cn&bbs_presentation_style=fullscreen&bbs_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti").catch(e => {
     console.error(e);
 })
