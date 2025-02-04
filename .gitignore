@@ -227,3 +227,7 @@ dist
 build/
 *.lock
 *.lockb
+
+
+# remove demo file
+result.json
