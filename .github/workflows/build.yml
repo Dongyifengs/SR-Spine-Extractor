@@ -1,87 +1,53 @@
 name: 编译
+
 on:
   push:
     branches:
       - main
+
 jobs:
-  build-windows:
-    name: 编译Windows
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        name: [out-windows, out-macos]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         name: 克隆项目
+
       - uses: actions/setup-node@v4
         name: 创建nodejs环境
         with:
           node-version: ">=20.11.1"
+
       - name: 安装yarn
         run: npm install -g yarn
+
+      - name: 缓存依赖
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ./build/app/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+
       - name: 安装主项目依赖
         run: yarn install
+
       - name: 编译主项目
         run: yarn run build
+
       - name: 安装app依赖
         run: yarn install
         working-directory: ./build/app/
+
       - name: 编译app为zip
         run: yarn run make
         working-directory: ./build/app/
+
       - uses: actions/upload-artifact@v4
         name: 存储构件
         with:
           path: ./build/app/out/make
-          name: out-windows
-  build-linux:
-    name: 编译Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        name: 克隆项目
-      - uses: actions/setup-node@v4
-        name: 创建nodejs环境
-        with:
-          node-version: ">=20.11.1"
-      - name: 安装yarn
-        run: npm install -g yarn
-      - name: 安装主项目依赖
-        run: yarn install
-      - name: 编译主项目
-        run: yarn run build
-      - name: 安装app依赖
-        run: yarn install
-        working-directory: ./build/app/
-      - name: 编译app为zip
-        run: yarn run make
-        working-directory: ./build/app/
-      - uses: actions/upload-artifact@v4
-        name: 存储构件
-        with:
-          path: ./build/app/out/make
-          name: out-linux
-  build-macos:
-    name: 编译MacOS
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-        name: 克隆项目
-      - uses: actions/setup-node@v4
-        name: 创建nodejs环境
-        with:
-          node-version: ">=20.11.1"
-      - name: 安装yarn
-        run: npm install -g yarn
-      - name: 安装主项目依赖
-        run: yarn install
-      - name: 编译主项目
-        run: yarn run build
-      - name: 安装app依赖
-        run: yarn install
-        working-directory: ./build/app/
-      - name: 编译app为zip
-        run: yarn run make
-        working-directory: ./build/app/
-      - uses: actions/upload-artifact@v4
-        name: 存储构件
-        with:
-          path: ./build/app/out/make
-          name: out-macos
+          name: ${{ matrix.name }}
