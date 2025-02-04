@@ -225,3 +225,4 @@ dist
 # *.ipr
 
 bun.lock*
+build/
