@@ -201,11 +201,12 @@ const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Nod
     const [atlasIdValue, jsonIdValue] = [atlasId, jsonId].map(e => e.value as HoYoIdentify);
     if (!parent || parent.type !== "Property") return;
     const parentKey = parent.key;
-    if (parentKey.type !== "Identifier") return;
+    if (parentKey.type !== "Identifier" && parentKey.type !== "Literal") return;
+    if (parentKey.type === "Literal" && typeof parentKey.value !== "string") return;
     return {
         atlas: atlasIdValue,
         json: jsonIdValue,
-        name: parentKey.name
+        name: (parentKey.type !== "Literal" ? parentKey.name : parentKey.value) as string,
     }
 }
 /**
@@ -406,7 +407,7 @@ const main = async (url: string) => {
     return remap(totalData);
 }
 
-main("https://act.mihoyo.com/sr/event/e20230929version-rpg/index.html?game_biz=hkrpg_cn&mhy_presentation_style=fullscreen&mhy_hide_status_bar=true&mode=fullscreen&mhy_landscape=true").catch(e => {
+main("https://act.hoyoverse.com/ys/event/e20241225hoyofair-97rgve/index.html").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
