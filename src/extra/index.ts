@@ -1,6 +1,6 @@
 export type ResourceDefinition = {
     name: string;
-    url: string;
+    url: URL | string;
 }
 export type SpineObject = {
     resources: ResourceDefinition[],

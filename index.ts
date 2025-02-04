@@ -302,12 +302,12 @@ const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHand
 }
 
 const remap = (original: ScriptHandleResult): SpineObject[] => {
-    const getResourceObj = (id: number) => {
+    const getResourceObj = (id: HoYoIdentify) => {
         const resourceMapEntry = original.resourceMap.find(e => e.id === id);
         if (resourceMapEntry) return resourceMapEntry;
         return original.resourceLoadedMap.find(e => e.id === id);
     }
-    const getResource = (id: number, counter: number = 0): (URL | string | object) | null => {
+    const getResource = (id: HoYoIdentify, counter: number = 0): (URL | string | object) | null => {
         if (counter > 5) return null;
         const obj = getResourceObj(id);
         if (!obj) return null;
