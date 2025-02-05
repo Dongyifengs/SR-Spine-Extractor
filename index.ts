@@ -35,6 +35,7 @@ import {traverse} from "estraverse";
 import * as ESTree from "estree";
 import {ResourceDefinition, SpineObject} from "./src/extra";
 import {writeFileSync} from "fs";
+import {generate} from "escodegen";
 
 type HoYoIdentify = number | string;
 
@@ -59,25 +60,36 @@ const getScripts = (html: string): string[] => {
     rewriter.transform(html);
     return [...scriptsUrl];
 }
+type SpineProjectType<T> = {
+    type: "ID",
+    id: HoYoIdentify
+} | {
+    type: "DIRECT",
+    data: T
+} | {
+    type: "VAR",
+    name: string
+}
 type SpineDescription = {
-    atlas: HoYoIdentify;
-    json: HoYoIdentify;
+    atlas: SpineProjectType<string>;
+    json: SpineProjectType<unknown>;
     name: string;
 };
-type ImageResourceDescription = {
-    src: HoYoIdentify,
-    id: string,
-}
+
 type ResourceValue = {
     value: string | URL | object;
     type: "URL" | "CONTENT" | "VAR"
+}
+type ImageResourceDescription = {
+    src: SpineProjectType<string>,
+    id: string,
 }
 type ResourceMapEntry = ResourceValue & {
     id: HoYoIdentify;
 };
 type NameDefinition = {
     name: string;
-    id: HoYoIdentify;
+    id: SpineProjectType<string>;
 }
 type ScriptHandleResult = {
     spine: SpineDescription[],
@@ -177,11 +189,89 @@ const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandle
         }
     };
 }
+
+/**
+ * Object.values(Object.assign({"XXXX": XXXXXXX}))[0]
+ */
+
+const handleObjectValueAssignCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | null => {
+    const args = node.arguments;
+    if (args.length !== 1) return;
+    const arg = args[0];
+    if (arg.type !== "CallExpression") return;
+    const callee = arg.callee;
+    if (callee.type !== "MemberExpression") return;
+    const obj = callee.object;
+    const prop = callee.property;
+    if (obj.type !== "Identifier" || prop.type !== "Identifier") return;
+    if (obj.name !== "Object" || prop.name !== "assign") return;
+    const callArgs = arg.arguments;
+    if (callArgs.length !== 1) return;
+    const callArg = callArgs[0];
+    if (callArg.type !== "ObjectExpression") return;
+    const properties = callArg.properties;
+    if (properties.length !== 1) return;
+    const firstProp = properties[0];
+    if (firstProp.type !== "Property") return;
+    const value = firstProp.value;
+    if (value.type === "Identifier") {
+        return {
+            type: "VAR",
+            name: value.name
+        }
+    } else if (value.type === "Literal" || value.type === "ObjectExpression") {
+        try {
+            const rawValue = (new Function(`return (${generate(value)})`))()
+            return {
+                type: "DIRECT",
+                data: rawValue as T
+            }
+        } catch (e) {
+        }
+    }
+
+    return;
+}
+
+/**
+ * r(xxxx)
+ */
+const handleResourceFunctionCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | null => {
+    const args = node.arguments;
+    if (args.length !== 1) return;
+    const arg = args[0];
+    if (arg.type !== "Literal") return;
+    return {
+        type: "ID",
+        id: arg.value as HoYoIdentify
+    }
+}
+/**
+ * XXXX: XXXX
+ * @see handleAnimationObject
+ */
+const handleSpineProjectFunctionCall = <T>(node: ESTree.Property): SpineProjectType<T> | null => {
+    const nodeValue = node.value;
+    if (nodeValue.type === "MemberExpression") {
+        const object = nodeValue.object;
+        const property = nodeValue.property;
+        if (object.type !== "CallExpression" || property.type !== "Literal") return;
+        if (property.value !== 0) return;
+        return handleObjectValueAssignCall(object);
+    } else if (nodeValue.type === "CallExpression") {
+        const callee = nodeValue.callee;
+        if (callee.type === "Identifier") {
+            return handleResourceFunctionCall(nodeValue);
+        }
+    }
+    return;
+}
 /**
  * {
- *     atlas: r(xxxx),
- *     json: r(xxxx)
+ *     atlas: XXXX,
+ *     json: XXXX
  * }
+ *
  */
 const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Node | null): SpineDescription | null => {
     const [first, second] = node.properties;
@@ -190,22 +280,20 @@ const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Nod
     if (firstKey.type !== "Identifier" || secondKey.type !== "Identifier") return;
     const keyList = [firstKey, secondKey].map(e => e.name);
     if (!keyList.includes("atlas") || !keyList.includes("json")) return;
-    const atlasProperty = node.properties[keyList.indexOf("atlas")] as ESTree.Property;
-    const jsonProperty = node.properties[keyList.indexOf("json")] as ESTree.Property;
-    const [atlasValue, jsonValue] = [atlasProperty, jsonProperty].map(e => e.value);
-    if (atlasValue.type !== "CallExpression" || jsonValue.type !== "CallExpression") return;
-    const [atlasArguments, jsonArguments] = [atlasValue, jsonValue].map(e => e.arguments);
-    if (atlasArguments.length !== 1 || jsonArguments.length !== 1) return;
-    const [atlasId, jsonId] = [atlasArguments, jsonArguments].map(e => e[0]);
-    if (atlasId.type !== "Literal" || jsonId.type !== "Literal") return;
-    const [atlasIdValue, jsonIdValue] = [atlasId, jsonId].map(e => e.value as HoYoIdentify);
+    const atlasIndex = keyList.indexOf("atlas")
+    const jsonIndex = keyList.indexOf("json")
+    const values = [first, second].map(handleSpineProjectFunctionCall).filter(e => !!e);
+    if (values.length !== 2) return;
+    const atlasRes = values[atlasIndex] as SpineProjectType<string>;
+    const jsonRes = values[jsonIndex] as SpineProjectType<unknown>;
+    // Parent Key
     if (!parent || parent.type !== "Property") return;
     const parentKey = parent.key;
     if (parentKey.type !== "Identifier" && parentKey.type !== "Literal") return;
     if (parentKey.type === "Literal" && typeof parentKey.value !== "string") return;
     return {
-        atlas: atlasIdValue,
-        json: jsonIdValue,
+        atlas: atlasRes,
+        json: jsonRes,
         name: (parentKey.type !== "Literal" ? parentKey.name : parentKey.value) as string,
     }
 }
@@ -222,16 +310,28 @@ const handleResourceObject = (node: ESTree.ObjectExpression): ImageResourceDescr
     const [srcIndex, idIndex, typeIndex] = [propertyNames.indexOf("src"), propertyNames.indexOf("id"), propertyNames.indexOf("type")];
     if (srcIndex === -1 || idIndex === -1 || typeIndex === -1) return;
     const [src, id, type] = [properties[srcIndex] as ESTree.Property, properties[idIndex] as ESTree.Property, properties[typeIndex] as ESTree.Property].map(e => e.value);
-    if (src.type !== "CallExpression") return;
     if (id.type !== "Literal") return;
     if (typeof id.value !== "string") return;
     if (type.type !== "Literal") return;
     if (type.value !== "image") return;
-    if (src.arguments.length !== 1) return;
-    const arg = src.arguments[0];
-    if (arg.type !== "Literal") return;
-    if (typeof arg.value !== "number" && typeof arg.value !== "string") return;
-    return {id: id.value, src: arg.value};
+    if (src.type === "MemberExpression") {
+        const object = src.object;
+        const property = src.property;
+        if (object.type !== "CallExpression" || property.type !== "Literal") return;
+        if (property.value !== 0) return;
+        const data = handleObjectValueAssignCall(object) as SpineProjectType<string>;
+        return {id: id.value, src: data};
+    } else if (src.type === "CallExpression") {
+        const callee = src.callee;
+        if (callee.type !== "Identifier") return;
+        const args = src.arguments;
+        if (args.length !== 1) return;
+        const arg = args[0];
+        if (arg.type !== "Literal") return;
+        if (typeof arg.value !== "number" && typeof arg.value !== "string") return;
+        return {id: id.value, src: {type: "ID", id: arg.value}};
+    }
+    return;
 }
 
 /**
@@ -271,22 +371,50 @@ const handleResourceArray = (node: ESTree.CallExpression, baseUrl: URL): {
 /**
  * ug = r(XXXXX),
  * ...
+ *
  */
 const handleResourceVar = (node: ESTree.AssignmentExpression): NameDefinition | null => {
     const left = node.left;
     const right = node.right;
     if (left.type !== "Identifier") return;
-    if (right.type !== "CallExpression") return;
-    const args = right.arguments;
-    if (args.length !== 1) return;
-    const arg = args[0];
-    if (arg.type !== "Literal") return;
-    const v = arg.value;
-    if (typeof v !== "number" && typeof v !== "string") return;
-    return {
-        id: v,
-        name: left.name
-    };
+    if (right.type === "CallExpression") {
+        const args = right.arguments;
+        if (args.length !== 1) return;
+        const arg = args[0];
+        if (arg.type !== "Literal") return;
+        const v = arg.value;
+        if (typeof v !== "number" && typeof v !== "string") return;
+        return {
+            id: {
+                type: "ID",
+                id: v
+            },
+            name: left.name
+        };
+    }
+}
+/**
+ *
+ * var ug = r.p + "XXXXXX",
+ * ...
+ */
+const handleResourceVarDef = (node: ESTree.VariableDeclarator, baseUrl: URL): NameDefinition | null => {
+    if (node.id.type !== "Identifier") return;
+    const right = node.init;
+    if (!right) return;
+    if (right.type === "BinaryExpression") {
+        if (right.operator !== "+") return;
+        const rightData = right.right;
+        if (rightData.type !== "Literal") return;
+        if (typeof rightData.value !== "string") return;
+        return {
+            id: {
+                type: "DIRECT",
+                data: new URL(rightData.value, baseUrl).toString()
+            },
+            name: node.id.name
+        }
+    }
 }
 const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHandleResult> => {
     const textFromUrl = await getTextFromUrl(scriptUrl);
@@ -328,6 +456,10 @@ const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHand
                 const varResult = handleResourceVar(node);
                 if (!varResult) return;
                 result.names.push(varResult);
+            } else if (node.type === "VariableDeclarator") {
+                const varResult = handleResourceVarDef(node, baseUrl);
+                if (!varResult) return;
+                result.names.push(varResult);
             }
         }
     })
@@ -345,15 +477,25 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
         const obj = getResourceObj(id);
         if (!obj) return null;
         if (obj.type !== "VAR") return obj.value;
-        const nameObj = original.names.filter(e => e.name === obj.value);
-        if (nameObj.length === 0) return null;
-        const resource = nameObj.map(e => getResource(e.id, counter + 1)).find(e => !!e);
+        const resource = getNamedResource(obj.value as string, counter)
         if (!resource) return null;
         return resource;
     }
+    const getNamedResource = (name: string, counter: number = 0): (URL | string | object) | null => {
+        if (counter > 5) return null;
+        const nameObj = original.names.filter(e => e.name === name);
+        if (nameObj.length === 0) return null;
+        return nameObj.map(e => e.id.type === "DIRECT" ? e.id.data : e.id.type === "ID" ? getResource(e.id.id, counter + 1) : getNamedResource(e.id.name, counter + 1)).find(e => !!e);
+    }
+    const getSpineResource = <T>(res: SpineProjectType<T>): T | null => {
+        if (res.type === "DIRECT") return res.data;
+        if (res.type === "VAR") return
+        return getResource(res.id) as T | null;
+    }
     const imagesData: Record<string, URL | string> = {};
     for (let image of original.images) {
-        const res = getResource(image.src) as (URL | string) | null;
+
+        const res = (image.src.type === "DIRECT" ? image.src.data : image.src.type === "VAR" ? getNamedResource(image.src.name) : getResource(image.src.id)) as (URL | string) | null;
         if (!res) {
             console.warn(`图片：${image.id}缺少资源定义`);
             continue;
@@ -362,8 +504,8 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
     }
     const spineObjects: SpineObject[] = [];
     for (let spineDescription of original.spine) {
-        const jsonRes = getResource(spineDescription.json) as unknown;
-        const atlasRes = getResource(spineDescription.atlas) as string;
+        const jsonRes = getSpineResource(spineDescription.json) as unknown;
+        const atlasRes = getSpineResource(spineDescription.atlas) as string;
         if (!jsonRes) {
             console.warn(`spine动画：${spineDescription.name} 缺少JSON文件`);
             continue;
@@ -375,6 +517,11 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
         const res: ResourceDefinition[] = atlasRes.split("\n").filter(e => e.endsWith(".png"))
             .map(e => e.replace(".png", ""))
             .map(e => ({name: e, url: imagesData[e]}));
+        res.forEach(e => {
+            if (!e.url) {
+                console.warn(`图片${e.name}未找到对应内容!`)
+            }
+        })
         spineObjects.push({
             name: spineDescription.name,
             atlas: atlasRes,
@@ -403,11 +550,11 @@ const main = async (url: string) => {
         totalData.resourceLoadedMap.push(...script.resourceLoadedMap);
         totalData.resourceMap.push(...script.resourceMap);
     }
-    console.log(totalData.spine)
+    console.log(`共检测到${totalData.spine.length}个spine项目`)
     return remap(totalData);
 }
 
-main("https://act.hoyoverse.com/ys/event/e20241225hoyofair-97rgve/index.html").catch(e => {
+main("https://act.mihoyo.com/sr/event/e20250101version-saokss/index.html?game_biz=hkrpg_cn&mhy_presentation_style=fullscreen&mhy_landscape=true&mhy_hide_status_bar=true&mode=fullscreen&win_mode=fullscreen&utm_source=bbs&utm_medium=mys&utm_campaign=post").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
