@@ -558,7 +558,7 @@ const remap = async (original: ScriptHandleResult): Promise<SpineObject[]> => {
         }
         let jsonContent: unknown = jsonRes;
         if (jsonRes instanceof URL) {
-            jsonContent = JSON.stringify(await getTextFromUrl(jsonRes));
+            jsonContent = JSON.parse(await getTextFromUrl(jsonRes));
         }
         let atlasContent: string = atlasRes as string;
         if (atlasRes instanceof URL) {
@@ -604,7 +604,7 @@ const main = async (url: string) => {
     return await remap(totalData);
 }
 
-main("https://act.mihoyo.com/ys/event/e20240706preview-5y4ic7/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true").catch(e => {
+main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
