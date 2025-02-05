@@ -467,35 +467,41 @@ const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHand
 }
 
 const remap = (original: ScriptHandleResult): SpineObject[] => {
-    const getResourceObj = (id: HoYoIdentify) => {
-        const resourceMapEntry = original.resourceMap.find(e => e.id === id);
+    const getResourceObj = (id: HoYoIdentify, filter: (e: any) => boolean = () => true) => {
+        const mainFilter = (e: ResourceMapEntry) => {
+            if (e.id !== id) return false;
+            if (e.type === "VAR") return true;
+            return filter(e.value);
+        }
+        const resourceMapEntry = original.resourceMap.find(mainFilter);
         if (resourceMapEntry) return resourceMapEntry;
-        return original.resourceLoadedMap.find(e => e.id === id);
+        return original.resourceLoadedMap.find(mainFilter);
     }
-    const getResource = (id: HoYoIdentify, counter: number = 0): (URL | string | object) | null => {
+    const getResource = (id: HoYoIdentify, filter: (e: any) => boolean = () => true, counter: number = 0): (URL | string | object) | null => {
         if (counter > 5) return null;
-        const obj = getResourceObj(id);
+        const obj = getResourceObj(id, filter);
         if (!obj) return null;
         if (obj.type !== "VAR") return obj.value;
-        const resource = getNamedResource(obj.value as string, counter)
+        const resource = getNamedResource(obj.value as string, filter, counter)
         if (!resource) return null;
         return resource;
     }
-    const getNamedResource = (name: string, counter: number = 0): (URL | string | object) | null => {
+    const getNamedResource = (name: string, filter: (e: any) => boolean = () => true, counter: number = 0): (URL | string | object) | null => {
         if (counter > 5) return null;
         const nameObj = original.names.filter(e => e.name === name);
         if (nameObj.length === 0) return null;
-        return nameObj.map(e => e.id.type === "DIRECT" ? e.id.data : e.id.type === "ID" ? getResource(e.id.id, counter + 1) : getNamedResource(e.id.name, counter + 1)).find(e => !!e);
+        return nameObj.map(e => e.id.type === "DIRECT" ? e.id.data : e.id.type === "ID" ? getResource(e.id.id, () => true, counter + 1) : getNamedResource(e.id.name, filter, counter + 1)).find(e => (!!e) && filter(e));
     }
-    const getSpineResource = <T>(res: SpineProjectType<T>): T | null => {
+    const getSpineResource = <T>(res: SpineProjectType<T>, filter: (e: any) => boolean = () => true): T | null => {
         if (res.type === "DIRECT") return res.data;
         if (res.type === "VAR") return
-        return getResource(res.id) as T | null;
+        return getResource(res.id, filter) as T | null;
     }
     const imagesData: Record<string, URL | string> = {};
+    const imageFilter = (e: any) => e instanceof URL || (typeof e === "string" && e.endsWith(".png"));
     for (let image of original.images) {
 
-        const res = (image.src.type === "DIRECT" ? image.src.data : image.src.type === "VAR" ? getNamedResource(image.src.name) : getResource(image.src.id)) as (URL | string) | null;
+        const res = (image.src.type === "DIRECT" ? image.src.data : image.src.type === "VAR" ? getNamedResource(image.src.name, imageFilter) : getResource(image.src.id, imageFilter)) as (URL | string) | null;
         if (!res) {
             console.warn(`图片：${image.id}缺少资源定义`);
             continue;
@@ -504,8 +510,8 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
     }
     const spineObjects: SpineObject[] = [];
     for (let spineDescription of original.spine) {
-        const jsonRes = getSpineResource(spineDescription.json) as unknown;
-        const atlasRes = getSpineResource(spineDescription.atlas) as string;
+        const jsonRes = getSpineResource(spineDescription.json, e => (typeof e === "object" || (typeof e === "string" && e.endsWith('.json')))) as unknown;
+        const atlasRes = getSpineResource(spineDescription.atlas, e => typeof e === "string" && (e.endsWith('.atlas') || (e.includes(".png") && e.includes(":")))) as string;
         if (!jsonRes) {
             console.warn(`spine动画：${spineDescription.name} 缺少JSON文件`);
             continue;
@@ -519,7 +525,7 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
             .map(e => ({name: e, url: imagesData[e]}));
         res.forEach(e => {
             if (!e.url) {
-                console.warn(`图片${e.name}未找到对应内容!`)
+                console.warn(`图片：${e.name}未找到对应内容!`)
             }
         })
         spineObjects.push({
@@ -550,11 +556,12 @@ const main = async (url: string) => {
         totalData.resourceLoadedMap.push(...script.resourceLoadedMap);
         totalData.resourceMap.push(...script.resourceMap);
     }
+    writeFileSync("raw_result.json", JSON.stringify(totalData, null, 2))
     console.log(`共检测到${totalData.spine.length}个spine项目`)
     return remap(totalData);
 }
 
-main("https://act.mihoyo.com/sr/event/e20250101version-saokss/index.html?game_biz=hkrpg_cn&mhy_presentation_style=fullscreen&mhy_landscape=true&mhy_hide_status_bar=true&mode=fullscreen&win_mode=fullscreen&utm_source=bbs&utm_medium=mys&utm_campaign=post").catch(e => {
+main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
