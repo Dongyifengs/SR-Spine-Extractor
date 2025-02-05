@@ -5,5 +5,8 @@ contextBridge.exposeInMainWorld('main', {
     handle: async (url: string): Promise<SpineObject[]> => {
         return await ipcRenderer.invoke("handle", url) as SpineObject[];
     },
-    selectSpinePath: async () => await ipcRenderer.invoke('select-spine-path')
+    selectSpinePath: async () => await ipcRenderer.invoke('select-spine-path'),
+    openLink(link: string) {
+        ipcRenderer.send('open-link', link)
+    }
 });
