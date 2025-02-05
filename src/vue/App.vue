@@ -67,12 +67,17 @@
         </div>
       </div>
     </div>
+
+    <!-- 警告提示 -->
+    <div class="tips">
+      <el-link type="info" href="https://github.com/Dongyifengs/SR-Spine-Extractor/issues/new">若出现网站无法正常解析，Spine无法正常识别的问题请点击此处跳转Github进行反馈</el-link>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 // 导入外部库
-import {ref, onMounted} from "vue";
+import {ref, onMounted, watch} from "vue";
 import {ElMessage, ElMessageBox} from 'element-plus';
 import 'element-plus/theme-chalk/dark/css-vars.css';
 
@@ -93,7 +98,17 @@ const webBuildTime = ref("未知时间"); // 网站构建时间
 const outExtraErrorList = ref("");  // 飘动异常列表输出控制台
 const outLogText = ref(""); // 软件输出日志控制台
 
-const spineFilePath = ref("") // 用于存储Spine路径
+const spineFilePath = ref(localStorage.getItem('spineFilePath') || '') // 用于存储Spine路径
+
+const SRPEVersion = ref("0.0.1")  // 用于对外公开版本
+const SRPEVersionNum = ref(0.01)  // 用于内部版本比较
+const SRPEHtmlText = ref("SR Spine Extractor")  // 用户软件名称
+
+// 页面名称渲染
+watch(SRPEHtmlText, (e) => {
+  document.title = e;
+})
+document.title = SRPEHtmlText.value + ` - v${SRPEVersion.value} -vNum:${SRPEVersionNum.value}`;
 
 // 功能实现
 // 粘贴功能
@@ -118,28 +133,20 @@ const parsing = () => {
 }
 
 // 设置Spine路径按钮点击事件
-const spinePath = () => {
-  ElMessageBox.prompt('请选择你的Spine.com路径，请注意，此Spine必须为正版', '设置Spine路径', {
-    confirmButtonText: '完成',
-    cancelButtonText: '取消',
-    inputPattern:
-        /^((?:[a-zA-Z]:[\\/]|\\|\/)?(?:[\w\s!@#$%^&*()-_+=.,;:'"~`]+[\\/]?)*)(Spine(?:\.com)?)$/,
-    inputErrorMessage: '无效路径',
+const spinePath = async () => {
+  const filePath = await window.main.selectSpinePath()
+  if (!filePath) {
+    ElMessage({ type: 'info', message: '路径选择已取消' })
+    return
+  }
+
+  localStorage.setItem('spineFilePath', `"${filePath}"`)
+  spineFilePath.value = filePath
+
+  ElMessage({
+    type: 'success',
+    message: `选择Spine路径为：${filePath}`,
   })
-      .then(({value}) => {
-        localStorage.setItem('spineFilePath', `"${value}"`);
-        spineFilePath.value = value
-        ElMessage({
-          type: 'success',
-          message: `选择Spine路径为：${value}`,
-        })
-      })
-      .catch(() => {
-        ElMessage({
-          type: 'info',
-          message: '输入已取消',
-        })
-      })
 }
 
 // 保存选择框状态到 localStorage

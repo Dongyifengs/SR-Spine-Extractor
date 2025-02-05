@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Menu, ipcMain} from "electron";
+import {app, BrowserWindow, Menu, ipcMain, dialog} from "electron";
 import {startingDevServer} from "./utils/DevUtils";
 import {join, join as pathJoin} from "path";
 import {handle} from "./extra";
@@ -40,6 +40,14 @@ app.whenReady().then(() => {
                 console.log("[electron] running")
             })
         }
+    })
+    ipcMain.handle("select-spine-path", async () => {
+        const result = await dialog.showOpenDialog({
+            title: "请选择你的Spine.com路径 - 仅限Windows版",
+            properties: ['openFile'],
+            filters: [{name: 'Spine文件-仅限Windows', extensions: ['com']}],
+        });
+        return result.canceled ? null : result.filePaths[0]
     })
 })
 

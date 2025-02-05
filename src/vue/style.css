@@ -1,5 +1,5 @@
 .main {
-    padding: 20px;
+    margin: 20px 20px 0 20px
 }
 
 .userInputUrlBox {
@@ -89,4 +89,9 @@
 
 .userInputUrlTool > * {
     margin: 0;
+}
+
+.tips {
+    display: flex;
+    flex-direction: column;
 }
