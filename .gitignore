@@ -228,6 +228,6 @@ build/
 *.lock
 *.lockb
 
-
 # remove demo file
 result.json
+raw_result.json

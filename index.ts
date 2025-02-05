@@ -110,7 +110,7 @@ type ExportResult = PreloadResult<ResourceValue>;
 /**
  * function(e) {("use strict";)? e.exports = XXXXX;}
  */
-const handleFunction = (func: ESTree.FunctionExpression, baseUrl: URL): ExportResult | null => {
+const handleFunction = (func: ESTree.FunctionExpression | ESTree.ArrowFunctionExpression, baseUrl: URL): ExportResult | null => {
     if (func.body.type !== "BlockStatement") return;
     const body = func.body.body.filter(e => !(e.type === "ExpressionStatement" && e.expression.type === "Literal" && e.expression.value === "use strict"));
     if (body.length !== 1) return;
@@ -177,7 +177,7 @@ const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandle
     const keyValue = key.type === "Literal" ? key.value : key.name;
     if (typeof keyValue !== "number" && typeof keyValue !== "string") return;
     const value = property.value;
-    if (value.type !== "FunctionExpression") return;
+    if (value.type !== "FunctionExpression" && value.type !== "ArrowFunctionExpression") return;
     const result = handleFunction(value, baseUrl);
     if (!result) return null;
     return {
@@ -498,9 +498,8 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
         return getResource(res.id, filter) as T | null;
     }
     const imagesData: Record<string, URL | string> = {};
-    const imageFilter = (e: any) => e instanceof URL || (typeof e === "string" && e.endsWith(".png"));
+    const imageFilter = (e: any) => e instanceof URL || (typeof e === "string" && (e.endsWith(".png") || e.startsWith("data:image/png;base64")));
     for (let image of original.images) {
-
         const res = (image.src.type === "DIRECT" ? image.src.data : image.src.type === "VAR" ? getNamedResource(image.src.name, imageFilter) : getResource(image.src.id, imageFilter)) as (URL | string) | null;
         if (!res) {
             console.warn(`图片：${image.id}缺少资源定义`);
@@ -509,15 +508,32 @@ const remap = (original: ScriptHandleResult): SpineObject[] => {
         imagesData[image.id] = res;
     }
     const spineObjects: SpineObject[] = [];
+    const jsonFilter = (e: any): boolean => {
+        if (e instanceof URL) {
+            console.log(e.href);
+            return e.href.endsWith(".json");
+        }
+        console.log(e);
+        return (typeof e === "object" || (typeof e === "string" && e.endsWith('.json')))
+    }
+    const atlasFilter = (e: any): boolean => {
+        if (e instanceof URL) {
+            return e.href.endsWith(".atlas");
+        }
+        return (typeof e === "string" && (e.endsWith('.atlas') || (e.includes(".png") && e.includes(":"))))
+    }
     for (let spineDescription of original.spine) {
-        const jsonRes = getSpineResource(spineDescription.json, e => (typeof e === "object" || (typeof e === "string" && e.endsWith('.json')))) as unknown;
-        const atlasRes = getSpineResource(spineDescription.atlas, e => typeof e === "string" && (e.endsWith('.atlas') || (e.includes(".png") && e.includes(":")))) as string;
+        if (spineDescription.name === "user_p08_yu_l") {
+            console.log(spineDescription);
+        }
+        const jsonRes = getSpineResource(spineDescription.json, jsonFilter) as unknown;
+        const atlasRes = getSpineResource(spineDescription.atlas, atlasFilter) as string;
         if (!jsonRes) {
-            console.warn(`spine动画：${spineDescription.name} 缺少JSON文件`);
+            console.warn(`spine动画：${spineDescription.name} 缺少JSON文件 ${JSON.stringify(spineDescription.json)}`);
             continue;
         }
         if (!atlasRes) {
-            console.warn(`spine动画：${spineDescription.name} 缺少atlas文件`);
+            console.warn(`spine动画：${spineDescription.name} 缺少atlas文件 ${JSON.stringify(spineDescription.atlas)}`);
             continue;
         }
         const res: ResourceDefinition[] = atlasRes.split("\n").filter(e => e.endsWith(".png"))
@@ -561,7 +577,7 @@ const main = async (url: string) => {
     return remap(totalData);
 }
 
-main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti").catch(e => {
+main("https://webstatic.mihoyo.com/ys/event/e20220928review_data/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=mkt&utm_medium=web&utm_campaign=arti").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
