@@ -98,7 +98,7 @@ const webBuildTime = ref("未知时间"); // 网站构建时间
 const outExtraErrorList = ref("");  // 飘动异常列表输出控制台
 const outLogText = ref(""); // 软件输出日志控制台
 
-const spineFilePath = ref("") // 用于存储Spine路径
+const spineFilePath = ref(localStorage.getItem('spineFilePath') || '') // 用于存储Spine路径
 
 const SRPEVersion = ref("0.0.1")  // 用于对外公开版本
 const SRPEVersionNum = ref(0.01)  // 用于内部版本比较
@@ -133,28 +133,20 @@ const parsing = () => {
 }
 
 // 设置Spine路径按钮点击事件
-const spinePath = () => {
-  ElMessageBox.prompt('请选择你的Spine.com路径，请注意，此Spine必须为正版', '设置Spine路径', {
-    confirmButtonText: '完成',
-    cancelButtonText: '取消',
-    inputPattern:
-        /^((?:[a-zA-Z]:[\\/]|\\|\/)?(?:[\w\s!@#$%^&*()-_+=.,;:'"~`]+[\\/]?)*)(Spine(?:\.com)?)$/,
-    inputErrorMessage: '无效路径',
+const spinePath = async () => {
+  const filePath = await window.main.selectSpinePath()
+  if (!filePath) {
+    ElMessage({ type: 'info', message: '路径选择已取消' })
+    return
+  }
+
+  localStorage.setItem('spineFilePath', `"${filePath}"`)
+  spineFilePath.value = filePath
+
+  ElMessage({
+    type: 'success',
+    message: `选择Spine路径为：${filePath}`,
   })
-      .then(({value}) => {
-        localStorage.setItem('spineFilePath', `"${value}"`);
-        spineFilePath.value = value
-        ElMessage({
-          type: 'success',
-          message: `选择Spine路径为：${value}`,
-        })
-      })
-      .catch(() => {
-        ElMessage({
-          type: 'info',
-          message: '输入已取消',
-        })
-      })
 }
 
 // 保存选择框状态到 localStorage
