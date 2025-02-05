@@ -71,13 +71,15 @@ type SpineProjectType<T> = {
     name: string
 }
 type SpineDescription = {
-    atlas: SpineProjectType<string>;
-    json: SpineProjectType<unknown>;
+    atlas: SpineProjectType<RawResource>;
+    json: SpineProjectType<RawResource>;
     name: string;
 };
 
+type RawResource = string | URL | object;
+
 type ResourceValue = {
-    value: string | URL | object;
+    value: RawResource,
     type: "URL" | "CONTENT" | "VAR"
 }
 type ImageResourceDescription = {
@@ -285,7 +287,7 @@ const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Nod
     const values = [first, second].map(handleSpineProjectFunctionCall).filter(e => !!e);
     if (values.length !== 2) return;
     const atlasRes = values[atlasIndex] as SpineProjectType<string>;
-    const jsonRes = values[jsonIndex] as SpineProjectType<unknown>;
+    const jsonRes = values[jsonIndex] as SpineProjectType<RawResource>;
     // Parent Key
     if (!parent || parent.type !== "Property") return;
     const parentKey = parent.key;
@@ -466,92 +468,118 @@ const handleScriptTag = async (scriptUrl: URL, baseUrl: URL): Promise<ScriptHand
     return result;
 }
 
-const remap = (original: ScriptHandleResult): SpineObject[] => {
-    const getResourceObj = (id: HoYoIdentify, filter: (e: any) => boolean = () => true) => {
-        const mainFilter = (e: ResourceMapEntry) => {
+type ResourceFilter = (data: any) => boolean;
+const defaultFilter: ResourceFilter = () => true
+
+const genCompareFn = <T>(key: (i: T) => number, reverse: boolean = false): ((a: T, b: T) => number) => {
+    return (a, b) => reverse ? key(b) - key(a) : key(a) - key(b);
+};
+
+const varCompareFn = genCompareFn((e: ResourceMapEntry) => e.type === "VAR" ? -1 : 1);
+const first = <T>(list: T[]): T | null => list.length > 0 ? list[0] : null;
+const urlExtensionFilter = (e: any, ext: string) => e instanceof URL ? e.href.endsWith(`.${ext}`) : false
+const imageFilter = (e: any) => {
+    if (typeof e === "string") {
+        return e.startsWith("data:image/png;base64") || e.endsWith(".png")
+    }
+    return urlExtensionFilter(e, "png");
+}
+const jsonFilter = (e: any) => {
+    if (typeof e === "string") {
+        return e.endsWith(".json");
+    }
+    if (e instanceof URL) {
+        return urlExtensionFilter(e, "json");
+    }
+    return typeof e === "object";
+}
+const atlasFilter = (e: any) => {
+    if (typeof e === "string") {
+        return (e.includes(".png") && e.includes(":")) || e.endsWith(".atlas");
+    }
+    return urlExtensionFilter(e, "atlas");
+}
+const remap = async (original: ScriptHandleResult): Promise<SpineObject[]> => {
+    const getRawResourceObject = (id: HoYoIdentify, filter: ResourceFilter = defaultFilter): ResourceMapEntry[] => {
+        const rawResourceFilter = (e: ResourceMapEntry): boolean => {
             if (e.id !== id) return false;
             if (e.type === "VAR") return true;
             return filter(e.value);
         }
-        const resourceMapEntry = original.resourceMap.find(mainFilter);
-        if (resourceMapEntry) return resourceMapEntry;
-        return original.resourceLoadedMap.find(mainFilter);
+        const rawResource = original.resourceMap.filter(rawResourceFilter).toSorted(varCompareFn);
+        const loadedRawResource = original.resourceLoadedMap.filter(rawResourceFilter).toSorted(varCompareFn);
+        rawResource.push(...loadedRawResource);
+        return rawResource;
     }
-    const getResource = (id: HoYoIdentify, filter: (e: any) => boolean = () => true, counter: number = 0): (URL | string | object) | null => {
-        if (counter > 5) return null;
-        const obj = getResourceObj(id, filter);
-        if (!obj) return null;
-        if (obj.type !== "VAR") return obj.value;
-        const resource = getNamedResource(obj.value as string, filter, counter)
-        if (!resource) return null;
-        return resource;
-    }
-    const getNamedResource = (name: string, filter: (e: any) => boolean = () => true, counter: number = 0): (URL | string | object) | null => {
-        if (counter > 5) return null;
-        const nameObj = original.names.filter(e => e.name === name);
-        if (nameObj.length === 0) return null;
-        return nameObj.map(e => e.id.type === "DIRECT" ? e.id.data : e.id.type === "ID" ? getResource(e.id.id, () => true, counter + 1) : getNamedResource(e.id.name, filter, counter + 1)).find(e => (!!e) && filter(e));
-    }
-    const getSpineResource = <T>(res: SpineProjectType<T>, filter: (e: any) => boolean = () => true): T | null => {
-        if (res.type === "DIRECT") return res.data;
-        if (res.type === "VAR") return
-        return getResource(res.id, filter) as T | null;
-    }
-    const imagesData: Record<string, URL | string> = {};
-    const imageFilter = (e: any) => e instanceof URL || (typeof e === "string" && (e.endsWith(".png") || e.startsWith("data:image/png;base64")));
-    for (let image of original.images) {
-        const res = (image.src.type === "DIRECT" ? image.src.data : image.src.type === "VAR" ? getNamedResource(image.src.name, imageFilter) : getResource(image.src.id, imageFilter)) as (URL | string) | null;
-        if (!res) {
-            console.warn(`图片：${image.id}缺少资源定义`);
-            continue;
-        }
-        imagesData[image.id] = res;
-    }
-    const spineObjects: SpineObject[] = [];
-    const jsonFilter = (e: any): boolean => {
-        if (e instanceof URL) {
-            console.log(e.href);
-            return e.href.endsWith(".json");
-        }
-        console.log(e);
-        return (typeof e === "object" || (typeof e === "string" && e.endsWith('.json')))
-    }
-    const atlasFilter = (e: any): boolean => {
-        if (e instanceof URL) {
-            return e.href.endsWith(".atlas");
-        }
-        return (typeof e === "string" && (e.endsWith('.atlas') || (e.includes(".png") && e.includes(":"))))
-    }
-    for (let spineDescription of original.spine) {
-        if (spineDescription.name === "user_p08_yu_l") {
-            console.log(spineDescription);
-        }
-        const jsonRes = getSpineResource(spineDescription.json, jsonFilter) as unknown;
-        const atlasRes = getSpineResource(spineDescription.atlas, atlasFilter) as string;
-        if (!jsonRes) {
-            console.warn(`spine动画：${spineDescription.name} 缺少JSON文件 ${JSON.stringify(spineDescription.json)}`);
-            continue;
-        }
-        if (!atlasRes) {
-            console.warn(`spine动画：${spineDescription.name} 缺少atlas文件 ${JSON.stringify(spineDescription.atlas)}`);
-            continue;
-        }
-        const res: ResourceDefinition[] = atlasRes.split("\n").filter(e => e.endsWith(".png"))
-            .map(e => e.replace(".png", ""))
-            .map(e => ({name: e, url: imagesData[e]}));
-        res.forEach(e => {
-            if (!e.url) {
-                console.warn(`图片：${e.name}未找到对应内容!`)
+    const getRawResource = (id: HoYoIdentify, filter: ResourceFilter = defaultFilter, counter: number = 0): RawResource[] => {
+        if (counter > 5) return [];
+        const entry = getRawResourceObject(id, filter);
+        const resultList: RawResource[] = [];
+        for (let entryElement of entry) {
+            if (entryElement.type === "VAR") {
+                resultList.push(...getNamedResource(entryElement.value as string, filter, counter + 1));
+                continue;
             }
-        })
-        spineObjects.push({
-            name: spineDescription.name,
-            atlas: atlasRes,
-            json: jsonRes,
-            resources: res
-        });
+            resultList.push(entryElement.value)
+        }
+        return resultList.filter(filter);
     }
-    return spineObjects;
+    const getNamedResource = (name: string, filter: ResourceFilter = defaultFilter, counter: number = 0): RawResource[] => {
+        if (counter > 5) return [];
+        const nameDefinitions = original.names.filter(e => e.name === name);
+        const resultList: RawResource[] = [];
+        for (let nameDefinition of nameDefinitions) {
+            const data = nameDefinition.id;
+            if (data.type === "DIRECT") {
+                resultList.push(data.data);
+                continue;
+            }
+            if (data.type === "ID") {
+                resultList.push(...getRawResource(data.id, filter, counter + 1));
+                continue;
+            }
+            resultList.push(...getNamedResource(data.name, filter, counter + 1));
+        }
+        return resultList.filter(filter);
+    }
+    const unwrapProjectObject = <T>(object: SpineProjectType<T>, filter: ResourceFilter = defaultFilter): T => {
+        if (object.type === "DIRECT") return object.data;
+        if (object.type === "ID") return first(getRawResource(object.id, filter)) as T;
+        return first(getNamedResource(object.name, filter)) as T;
+    }
+    const imagesUnwrap = new Map<string, RawResource>(original.images.map(e => [e.id, unwrapProjectObject<RawResource>(e.src, imageFilter)]));
+    const result: SpineObject[] = [];
+    for (let spineDescription of original.spine) {
+        const jsonRes = unwrapProjectObject<RawResource>(spineDescription.json, jsonFilter);
+        const atlasRes = unwrapProjectObject<RawResource>(spineDescription.atlas, atlasFilter);
+        if (!jsonRes || !atlasRes) {
+            console.warn(`动画 ${spineDescription.name} 缺少json或atlas文件定义！`);
+            continue;
+        }
+        let jsonContent: unknown = jsonRes;
+        if (jsonRes instanceof URL) {
+            jsonContent = JSON.stringify(await getTextFromUrl(jsonRes));
+        }
+        let atlasContent: string = atlasRes as string;
+        if (atlasRes instanceof URL) {
+            atlasContent = await getTextFromUrl(atlasRes);
+        }
+        const images: ResourceDefinition[] = atlasContent.split("\n")
+            .filter(e => e.endsWith(".png"))
+            .map(e => e.replace(".png", ''))
+            .map(e => ({name: e, url: imagesUnwrap.get(e) as string | URL}));
+        images.filter(e => !e.url).forEach(e => {
+            console.log(`图片：${e.name}缺少URL！`);
+        })
+        console.log(spineDescription.name)
+        result.push({
+            name: spineDescription.name,
+            atlas: atlasContent,
+            json: jsonContent,
+            resources: images
+        })
+    }
+    return result;
 }
 
 const main = async (url: string) => {
@@ -572,12 +600,11 @@ const main = async (url: string) => {
         totalData.resourceLoadedMap.push(...script.resourceLoadedMap);
         totalData.resourceMap.push(...script.resourceMap);
     }
-    writeFileSync("raw_result.json", JSON.stringify(totalData, null, 2))
     console.log(`共检测到${totalData.spine.length}个spine项目`)
-    return remap(totalData);
+    return await remap(totalData);
 }
 
-main("https://webstatic.mihoyo.com/ys/event/e20220928review_data/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=mkt&utm_medium=web&utm_campaign=arti").catch(e => {
+main("https://act.mihoyo.com/ys/event/e20240706preview-5y4ic7/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
