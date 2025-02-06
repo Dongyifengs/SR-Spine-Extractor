@@ -582,7 +582,7 @@ const remap = async (original: ScriptHandleResult): Promise<SpineObject[]> => {
     return result;
 }
 
-const main = async (url: string) => {
+const main = async (url: string, repeatPolicy: "REMOVE" | "RENAME" = "RENAME") => {
     const baseUrl = new URL(url);
     const html = await getTextFromUrl(baseUrl);
     const scripts = (await Promise.all(getScripts(html).map(e => new URL(e, url)).map(e => handleScriptTag(e, baseUrl))));
@@ -601,10 +601,31 @@ const main = async (url: string) => {
         totalData.resourceMap.push(...script.resourceMap);
     }
     console.log(`共检测到${totalData.spine.length}个spine项目`)
-    return await remap(totalData);
+    const objects = await remap(totalData);
+    const countMaps = new Map<string, number>();
+    let repeatProjectsCount = 0;
+    const newObjects: SpineObject[] = [];
+    objects.forEach(e => {
+        if (countMaps.has(e.name)) {
+            const count = countMaps.get(e.name);
+            countMaps.set(e.name, count + 1);
+            repeatProjectsCount++;
+            if (repeatPolicy === "RENAME") {
+                e.name = `${e.name}(${count})`;
+            }
+            return;
+        }
+        countMaps.set(e.name, 1);
+        if (repeatPolicy === "REMOVE") {
+            newObjects.push(e);
+        }
+    });
+    console.log(`检测到${repeatProjectsCount}个重名项目，已经${repeatPolicy === 'REMOVE' ? "删除" : "重命名"}`);
+    if (repeatPolicy === "REMOVE") return newObjects;
+    return objects;
 }
 
-main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti").catch(e => {
+main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti", "REMOVE").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
