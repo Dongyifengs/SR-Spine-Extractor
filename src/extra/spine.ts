@@ -1,6 +1,6 @@
 import {parsePage} from "./parser";
 import {execSync} from "child_process";
-import {OutputConfig, SpineConfig, SpineObject} from "./src/extra";
+import {OutputConfig, SpineConfig, SpineObject} from "./index";
 import {rmSync, existsSync, mkdirSync, writeFileSync, renameSync} from "fs";
 import {join, resolve, isAbsolute} from "path";
 
@@ -16,6 +16,16 @@ export const handle = async (url: string, spineConfig: SpineConfig, outputConfig
     await toSpineProject(projects, spineConfig, outputConfig.path)
 }
 
+type SpineProjectTemp = {
+    skeleton: {
+        images: string,
+        spine: string
+    },
+    bones: {
+        scaleX?: number,
+        scaleY?: number
+    }[]
+}
 const handleSingleProject = async (project: SpineObject, {
     comFile,
     proxy
@@ -28,23 +38,24 @@ const handleSingleProject = async (project: SpineObject, {
     const projectRawPath = join(projectBase, `raw.json`);
     const spineProjectFilePath = join(projectBase, `${projectName}.spine`);
     writeFileSync(projectRawPath, JSON.stringify(project, null, 4));
-    project.json['skeleton']['images'] = "./images";
-    const projectSpineVersionRange = project.json['skeleton']['spine'] as string;
+    const jsonData: SpineProjectTemp = project.json as SpineProjectTemp;
+    jsonData['skeleton']['images'] = "./images";
+    const projectSpineVersionRange = jsonData['skeleton']['spine'];
     const projectSpineVersion = projectSpineVersionRange.split("-").toReversed()[0];
     let scale = 1;
-    for (const bone of project.json['bones']) {
+    for (const bone of jsonData['bones']) {
         const scaleX = bone["scaleX"];
         if (scaleX !== undefined) {
-            scale = scaleX as number;
+            scale = scaleX;
             break;
         }
         const scaleY = bone['scaleY'];
         if (scaleY !== undefined) {
-            scale = scaleY as number;
+            scale = scaleY;
             break;
         }
     }
-    writeFileSync(jsonPath, JSON.stringify(project.json, null, 4));
+    writeFileSync(jsonPath, JSON.stringify(jsonData, null, 4));
     writeFileSync(atlasPath, project.atlas);
     const imagesPath = join(projectBase, "images");
     mkdirSync(imagesPath);

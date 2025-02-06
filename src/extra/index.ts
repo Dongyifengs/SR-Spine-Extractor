@@ -1,3 +1,5 @@
+import {handle as spineHandler} from "./spine";
+
 export type ResourceDefinition = {
     name: string;
     url: URL | string;
@@ -20,7 +22,4 @@ export type OutputConfig = {
     path: string,
     repeatPolicy: RepeatPolicy
 }
-
-export async function handle(url: string): Promise<SpineObject[]> {
-    return [];
-}
+export const handle = spineHandler;

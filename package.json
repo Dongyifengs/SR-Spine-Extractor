@@ -1,6 +1,6 @@
 {
   "name": "sr-spine-extractor",
-  "module": "parser.ts",
+  "module": "src/extra/parser.ts",
   "main": "build/main.js",
   "type": "commonjs",
   "scripts": {

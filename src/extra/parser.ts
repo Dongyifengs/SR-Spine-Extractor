@@ -33,7 +33,7 @@
 import {parse} from "esprima-next";
 import {traverse} from "estraverse";
 import * as ESTree from "estree";
-import {RepeatPolicy, ResourceDefinition, SpineObject} from "./src/extra";
+import {RepeatPolicy, ResourceDefinition, SpineObject} from "./index";
 import {generate} from "escodegen";
 
 type HoYoIdentify = number | string;
@@ -111,7 +111,7 @@ type ExportResult = PreloadResult<ResourceValue>;
 /**
  * function(e) {("use strict";)? e.exports = XXXXX;}
  */
-const handleFunction = (func: ESTree.FunctionExpression | ESTree.ArrowFunctionExpression, baseUrl: URL): ExportResult | null => {
+const handleFunction = (func: ESTree.FunctionExpression | ESTree.ArrowFunctionExpression, baseUrl: URL): ExportResult | undefined => {
     if (func.body.type !== "BlockStatement") return;
     const body = func.body.body.filter(e => !(e.type === "ExpressionStatement" && e.expression.type === "Literal" && e.expression.value === "use strict"));
     if (body.length !== 1) return;
@@ -172,7 +172,7 @@ const handleFunction = (func: ESTree.FunctionExpression | ESTree.ArrowFunctionEx
 /**
  * XXXX: function(e) {e.exports = XXXX;}
  */
-const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandleResult | null => {
+const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandleResult | undefined => {
     const key = property.key;
     if (key.type !== "Literal" && key.type !== "Identifier") return;
     const keyValue = key.type === "Literal" ? key.value : key.name;
@@ -180,7 +180,7 @@ const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandle
     const value = property.value;
     if (value.type !== "FunctionExpression" && value.type !== "ArrowFunctionExpression") return;
     const result = handleFunction(value, baseUrl);
-    if (!result) return null;
+    if (!result) return;
     return {
         preload: result.preload,
         data: {
@@ -195,7 +195,7 @@ const handleProperty = (property: ESTree.Property, baseUrl: URL): PropertyHandle
  * Object.values(Object.assign({"XXXX": XXXXXXX}))[0]
  */
 
-const handleObjectValueAssignCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | null => {
+const handleObjectValueAssignCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | undefined => {
     const args = node.arguments;
     if (args.length !== 1) return;
     const arg = args[0];
@@ -237,7 +237,7 @@ const handleObjectValueAssignCall = <T>(node: ESTree.CallExpression): SpineProje
 /**
  * r(xxxx)
  */
-const handleResourceFunctionCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | null => {
+const handleResourceFunctionCall = <T>(node: ESTree.CallExpression): SpineProjectType<T> | undefined => {
     const args = node.arguments;
     if (args.length !== 1) return;
     const arg = args[0];
@@ -251,7 +251,7 @@ const handleResourceFunctionCall = <T>(node: ESTree.CallExpression): SpineProjec
  * XXXX: XXXX
  * @see handleAnimationObject
  */
-const handleSpineProjectFunctionCall = <T>(node: ESTree.Property): SpineProjectType<T> | null => {
+const handleSpineProjectFunctionCall = <T>(node: ESTree.Property): SpineProjectType<T> | undefined => {
     const nodeValue = node.value;
     if (nodeValue.type === "MemberExpression") {
         const object = nodeValue.object;
@@ -274,7 +274,7 @@ const handleSpineProjectFunctionCall = <T>(node: ESTree.Property): SpineProjectT
  * }
  *
  */
-const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Node | null): SpineDescription | null => {
+const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Node | null): SpineDescription | undefined => {
     const [first, second] = node.properties;
     if (first.type !== "Property" || second.type !== "Property") return;
     const [firstKey, secondKey] = [first, second].map(e => e.key);
@@ -305,7 +305,7 @@ const handleAnimationObject = (node: ESTree.ObjectExpression, parent: ESTree.Nod
  *     type: "image"
  *}
  */
-const handleResourceObject = (node: ESTree.ObjectExpression): ImageResourceDescription | null => {
+const handleResourceObject = (node: ESTree.ObjectExpression): ImageResourceDescription | undefined => {
     const properties = node.properties.filter(e => e.type === "Property" && e.key.type === "Identifier");
     const propertyNames = properties.map(e => ((e as ESTree.Property).key as ESTree.Identifier).name);
     const [srcIndex, idIndex, typeIndex] = [propertyNames.indexOf("src"), propertyNames.indexOf("id"), propertyNames.indexOf("type")];
@@ -341,12 +341,12 @@ const handleResourceObject = (node: ESTree.ObjectExpression): ImageResourceDescr
 const handleResourceArray = (node: ESTree.CallExpression, baseUrl: URL): {
     resourceMap: ResourceMapEntry[],
     resourceLoadedMap: ResourceMapEntry[]
-} | null => {
+} | undefined => {
     if (node.arguments.length !== 1) return;
     const arg = node.arguments[0];
     if (arg.type !== "ArrayExpression") return;
     if (!arg.elements.every(e => e && e.type === "FunctionExpression")) return;
-    const result = {
+    const result: { resourceMap: ResourceMapEntry[], resourceLoadedMap: ResourceMapEntry[] } = {
         resourceMap: [],
         resourceLoadedMap: []
     };
@@ -374,7 +374,7 @@ const handleResourceArray = (node: ESTree.CallExpression, baseUrl: URL): {
  * ...
  *
  */
-const handleResourceVar = (node: ESTree.AssignmentExpression): NameDefinition | null => {
+const handleResourceVar = (node: ESTree.AssignmentExpression): NameDefinition | undefined => {
     const left = node.left;
     const right = node.right;
     if (left.type !== "Identifier") return;
@@ -399,7 +399,7 @@ const handleResourceVar = (node: ESTree.AssignmentExpression): NameDefinition | 
  * var ug = r.p + "XXXXXX",
  * ...
  */
-const handleResourceVarDef = (node: ESTree.VariableDeclarator, baseUrl: URL): NameDefinition | null => {
+const handleResourceVarDef = (node: ESTree.VariableDeclarator, baseUrl: URL): NameDefinition | undefined => {
     if (node.id.type !== "Identifier") return;
     const right = node.init;
     if (!right) return;
@@ -606,7 +606,7 @@ export const parsePage = async (url: string, repeatPolicy: RepeatPolicy = "RENAM
     const newObjects: SpineObject[] = [];
     objects.forEach(e => {
         if (countMaps.has(e.name)) {
-            const count = countMaps.get(e.name);
+            const count = countMaps.get(e.name)!;
             countMaps.set(e.name, count + 1);
             repeatProjectsCount++;
             if (repeatPolicy === "RENAME") {
