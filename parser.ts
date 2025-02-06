@@ -33,8 +33,7 @@
 import {parse} from "esprima-next";
 import {traverse} from "estraverse";
 import * as ESTree from "estree";
-import {ResourceDefinition, SpineObject} from "./src/extra";
-import {writeFileSync} from "fs";
+import {RepeatPolicy, ResourceDefinition, SpineObject} from "./src/extra";
 import {generate} from "escodegen";
 
 type HoYoIdentify = number | string;
@@ -582,7 +581,7 @@ const remap = async (original: ScriptHandleResult): Promise<SpineObject[]> => {
     return result;
 }
 
-const main = async (url: string, repeatPolicy: "REMOVE" | "RENAME" = "RENAME") => {
+export const parsePage = async (url: string, repeatPolicy: RepeatPolicy = "RENAME") => {
     const baseUrl = new URL(url);
     const html = await getTextFromUrl(baseUrl);
     const scripts = (await Promise.all(getScripts(html).map(e => new URL(e, url)).map(e => handleScriptTag(e, baseUrl))));
@@ -625,8 +624,11 @@ const main = async (url: string, repeatPolicy: "REMOVE" | "RENAME" = "RENAME") =
     return objects;
 }
 
+// demo to output the result to result.json
+/*
 main("https://act.mihoyo.com/ys/event/e20240928review-k6pzqq/index.html?game_biz=hk4e_cn&mhy_presentation_style=fullscreen&mhy_auth_required=true&mhy_landscape=true&mhy_hide_status_bar=true&utm_source=bbs&utm_medium=mys&utm_campaign=arti", "REMOVE").catch(e => {
     console.error(e);
 }).then(e => {
     writeFileSync("result.json", JSON.stringify(e, null, 2))
 })
+*/
