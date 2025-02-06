@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Menu, ipcMain, dialog} from "electron";
+import {app, BrowserWindow, Menu, ipcMain, dialog, shell} from "electron";
 import {startingDevServer} from "./utils/DevUtils";
 import {join, join as pathJoin} from "path";
 import {handle} from "./extra";
@@ -48,6 +48,9 @@ app.whenReady().then(() => {
             filters: [{name: 'Spine文件-仅限Windows', extensions: ['com']}],
         });
         return result.canceled ? null : result.filePaths[0]
+    })
+    ipcMain.on("open-link", (event, url: string) => {
+        shell.openExternal(url).then();
     })
 })
 

@@ -2,7 +2,8 @@
   <div class="main">
     <!-- 用户输入URL框 -->
     <div class="userInputUrlBox">
-      <el-input v-model="userInputUrl" style="max-width: 600px" placeholder="请输入网页地址：" class="input-with-select"></el-input>
+      <el-input v-model="userInputUrl" style="max-width: 600px" placeholder="请输入网页地址："
+                class="input-with-select"></el-input>
       <el-button type="warning" @click="paste()">粘贴</el-button>
       <el-button type="danger" @click="clear()">清除</el-button>
       <el-button type="success" @click="parsing()">解析</el-button>
@@ -57,20 +58,22 @@
       <div class="leftWindow">
         <div class="outExtraErrorLog">
           <span class="logText">飘动异常列表:</span><br>
-          <span class="terminal">{{ outExtraErrorList }}</span>
+          <span class="terminal">{{ outExtraErrorList }}</span><br>
         </div>
       </div>
       <div class="rightWindow">
         <div class="outLog">
           <span class="logText">软件输出日志:</span>
-          <span class="terminal">{{ outLogText }}</span>
+          <span class="terminal">{{ outLogText }}</span><br>
         </div>
       </div>
     </div>
 
     <!-- 警告提示 -->
     <div class="tips">
-      <el-link type="info" href="https://github.com/Dongyifengs/SR-Spine-Extractor/issues/new">若出现网站无法正常解析，Spine无法正常识别的问题请点击此处跳转Github进行反馈</el-link>
+      <el-link type="info" @click="openLink('https://github.com/Dongyifengs/SR-Spine-Extractor/issues/new')" href="#">
+        若出现网站无法正常解析，Spine无法正常识别的问题请点击此处跳转Github进行反馈
+      </el-link>
     </div>
   </div>
 </template>
@@ -78,7 +81,7 @@
 <script setup lang="ts">
 // 导入外部库
 import {ref, onMounted, watch} from "vue";
-import {ElMessage, ElMessageBox} from 'element-plus';
+import {ElMessage} from 'element-plus';
 import 'element-plus/theme-chalk/dark/css-vars.css';
 
 // 定义变量
@@ -136,7 +139,7 @@ const parsing = () => {
 const spinePath = async () => {
   const filePath = await window.main.selectSpinePath()
   if (!filePath) {
-    ElMessage({ type: 'info', message: '路径选择已取消' })
+    ElMessage({type: 'info', message: '路径选择已取消'})
     return
   }
 
@@ -173,10 +176,16 @@ const restoreCheckboxState = () => {
   }
 }
 
+// url点击调用原生浏览器方法
+const openLink = (link: string) => {
+  window.main.openLink(link);
+}
+
 // 组件挂载时恢复状态
 onMounted(() => {
   restoreCheckboxState();
 });
+
 </script>
 
 <style scoped>
