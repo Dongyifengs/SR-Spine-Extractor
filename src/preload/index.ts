@@ -1,9 +1,9 @@
 import {contextBridge, ipcRenderer} from "electron";
-import type {SpineObject} from "../extra";
+import {OutputConfig, SpineConfig} from "../extra";
 
 contextBridge.exposeInMainWorld('main', {
-    handle: async (url: string): Promise<SpineObject[]> => {
-        return await ipcRenderer.invoke("handle", url) as SpineObject[];
+    handle: async (url: string, spineConfig: SpineConfig, outputConfig: OutputConfig): Promise<void> => {
+        return await ipcRenderer.invoke("handle", url, spineConfig, outputConfig);
     },
     selectSpinePath: async () => await ipcRenderer.invoke('select-spine-path'),
     openLink(link: string) {

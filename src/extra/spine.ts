@@ -12,6 +12,8 @@ const getAbsolutePath = (relativePath: string): string => {
 }
 
 export const handle = async (url: string, spineConfig: SpineConfig, outputConfig: OutputConfig) => {
+    console.log(JSON.stringify(outputConfig, null, 2));
+    console.log(JSON.stringify(spineConfig, null, 2));
     const projects = await parsePage(url, outputConfig.repeatPolicy);
     await toSpineProject(projects, spineConfig, outputConfig.path)
 }
@@ -70,7 +72,7 @@ const handleSingleProject = async (project: SpineObject, {
             }
         }
         const resp = (await fetch(data));
-        writeFileSync(resourcePath, await resp.bytes());
+        writeFileSync(resourcePath, Buffer.from(await resp.arrayBuffer()));
     }
     try {
         console.log(`开始解开 ${projectName}`);

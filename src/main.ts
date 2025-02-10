@@ -1,7 +1,7 @@
 import {app, BrowserWindow, Menu, ipcMain, dialog, shell} from "electron";
 import {startingDevServer} from "./utils/DevUtils";
 import {join, join as pathJoin} from "path";
-import {handle} from "./extra";
+import {handle, OutputConfig, SpineConfig} from "./extra";
 
 const development = true;
 const createWindow = async () => {
@@ -29,8 +29,8 @@ const createWindow = async () => {
 
 app.whenReady().then(() => {
     createWindow().then(() => {
-        ipcMain.handle("handle", async (event, url: string) => {
-            return await handle(url);
+        ipcMain.handle("handle", async (_, url: string, spineConfig: SpineConfig, outputConfig: OutputConfig) => {
+            return await handle(url, spineConfig, outputConfig);
         })
     })
 

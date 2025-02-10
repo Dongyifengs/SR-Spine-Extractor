@@ -35,6 +35,7 @@ import {traverse} from "estraverse";
 import * as ESTree from "estree";
 import {RepeatPolicy, ResourceDefinition, SpineObject} from "./index";
 import {generate} from "escodegen";
+import {JSDOM} from "jsdom";
 
 type HoYoIdentify = number | string;
 
@@ -46,18 +47,8 @@ const getTextFromUrl = async (url: URL) => {
     return await response.text();
 }
 const getScripts = (html: string): string[] => {
-    const rewriter = new HTMLRewriter();
-    const scriptsUrl: Set<string> = new Set();
-    rewriter.on("script", {
-        element(element: HTMLRewriterTypes.Element): void | Promise<void> {
-            const src = element.getAttribute("src");
-            if (src) {
-                scriptsUrl.add(src);
-            }
-        }
-    });
-    rewriter.transform(html);
-    return [...scriptsUrl];
+    const dom = new JSDOM(html);
+    return [...dom.window.document.querySelectorAll("script")].map(e => e.src).filter(e => !!e);
 }
 type SpineProjectType<T> = {
     type: "ID",

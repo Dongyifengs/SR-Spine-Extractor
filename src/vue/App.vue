@@ -83,6 +83,7 @@
 import {ref, onMounted, watch} from "vue";
 import {ElMessage} from 'element-plus';
 import 'element-plus/theme-chalk/dark/css-vars.css';
+import * as url from "node:url";
 
 // 定义变量
 const userInputUrl = ref(""); // 用户输入url地址的函数
@@ -132,7 +133,12 @@ const clear = () => {
 
 // 解析功能
 const parsing = () => {
-  ElMessage("这是解析功能");
+  window.main.handle(userInputUrl.value, {
+    comFile: spineFilePath.value,
+  }, {
+    path: "C:\\Users\\15459\\Documents\\SpineSR",
+    repeatPolicy: "REMOVE",
+  });
 }
 
 // 设置Spine路径按钮点击事件
@@ -143,7 +149,7 @@ const spinePath = async () => {
     return
   }
 
-  localStorage.setItem('spineFilePath', `"${filePath}"`)
+  localStorage.setItem('spineFilePath', `${filePath}`)
   spineFilePath.value = filePath
 
   ElMessage({
