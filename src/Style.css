@@ -1,0 +1,15 @@
+* {
+    margin: 0;
+}
+
+:deep(.el-dialog) {
+    margin: 0 !important;
+    position: absolute;
+    top: 50px;
+    left: 50px;
+}
+
+:deep(.el-dialog__header) {
+    cursor: move;
+    user-select: none;
+}
