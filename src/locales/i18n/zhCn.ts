@@ -1,18 +1,32 @@
 // zh-CN.js
 export default {
-    message: {
-        paste: '粘贴',
-        clear: '清除',
-        parse: '解析',
-        pasteSuccess: '已粘贴剪贴板内容！',
-        pasteError: '粘贴失败！请查看报错: {error}',
-        clearSuccess: '已清除！',
-        developing: '正在开发！',
-        inputUrlPlaceholder: '请输入网页地址：',
+    // mainUI -> 页面首页的文本
+    mainUI: {
+        button: {
+            paste: '粘贴',
+            clear: '清除',
+            parse: '解析'
+        },
+        table: {
+
+        },
+        text: {
+            inputUrlPlaceholder: '请输入网页地址：',
+        },
+        message: {
+            pasteSuccess: '已粘贴剪贴板内容！',
+            pasteError: '粘贴失败！请查看报错: {error}',
+            clearSuccess: '已清除！',
+            developing: '正在开发！',
+            SettingsSavedSuccessfully: '设置已成功保存!'
+        },
+        log: {
+            errOut: '错误报告：{error}'
+        },
         language: {
             zh: '中文',
             en: '英文',
-            currentLanguage: '当前语种为{language}'
+            currentLanguage: '当前语种为：{language}'
         }
     },
     settings: {

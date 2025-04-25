@@ -1,7 +1,7 @@
 <template>
   <el-dropdown @command="handleSelect" trigger="click">
     <el-button>
-      {{ $t(`message.language.${curLanguage}`) }}
+      {{ $t(`mainUI.language.${curLanguage}`) }}
       <el-icon class="el-icon--right"><arrow-down /></el-icon>
     </el-button>
     <template #dropdown>
@@ -10,13 +10,13 @@
             :command="'zh'"
             :disabled="curLanguage === 'zh'"
         >
-          {{ $t('message.language.zh') }}
+          {{ $t('mainUI.language.zh') }}
         </el-dropdown-item>
         <el-dropdown-item
             :command="'en'"
             :disabled="curLanguage === 'en'"
         >
-          {{ $t('message.language.en') }}
+          {{ $t('mainUI.language.en') }}
         </el-dropdown-item>
       </el-dropdown-menu>
     </template>
@@ -35,8 +35,8 @@ const handleSelect = (v: string) => {
   localStorage.setItem('language', v)
   locale.value = v
   ElMessage.success(
-      t('message.language.currentLanguage', {
-        language: t(`message.language.${v}`)  // 使用当前语言代码直接获取翻译
+      t('mainUI.language.currentLanguage', {
+        language: t(`mainUI.language.${v}`)  // 使用当前语言代码直接获取翻译
       })
   )
 }

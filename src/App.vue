@@ -2,12 +2,12 @@
   <el-input
       v-model="inputURLText"
       style="max-width: 300px"
-      :placeholder="$t('message.inputUrlPlaceholder')"
+      :placeholder="$t('mainUI.text.inputUrlPlaceholder')"
       class="inputURLClass"
   ></el-input>
-  <el-button type="warning" @click="paste()">{{ $t("message.paste") }}</el-button>
-  <el-button type="danger" :disabled="!inputURLText" @click="clear()">{{ $t("message.clear") }}</el-button>
-  <el-button type="success" :disabled="!inputURLText" @click="parsing()">{{ $t("message.parse") }}</el-button>
+  <el-button type="warning" @click="paste()">{{ $t("mainUI.button.paste") }}</el-button>
+  <el-button type="danger" :disabled="!inputURLText" @click="clear()">{{ $t("mainUI.button.clear") }}</el-button>
+  <el-button type="success" :disabled="!inputURLText" @click="parsing()">{{ $t("mainUI.button.parse") }}</el-button>
   <el-button type="primary" :icon="Setting" circle @click="showSettings = true"/>
   <ChangeLan/>
 
@@ -94,26 +94,26 @@ const settings = ref({
 const paste = async () => {
   try {
     inputURLText.value = await navigator.clipboard.readText();
-    ElMessage.success(t('message.pasteSuccess'));
+    ElMessage.success(t('mainUI.message.pasteSuccess'));
   } catch (error) {
-    ElMessage.error(t('message.pasteError', {error}));
+    ElMessage.error(t('mainUI.message.pasteError', {error}));
   }
 }
 
 // 清除功能
 const clear = async () => {
   inputURLText.value = '';
-  ElMessage.success(t('message.clearSuccess'));
+  ElMessage.success(t('mainUI.message.clearSuccess'));
 }
 
 // 解析功能
 const parsing = async () => {
-  ElMessage.success(t('message.developing'));
+  ElMessage.success(t('mainUI.message.developing'));
 }
 
 // 保存设置
 const saveSettings = () => {
-  ElMessage.success('Settings saved successfully');
+  ElMessage.success(t('mainUI.message.SettingsSavedSuccessfully'));
   showSettings.value = false;
 }
 </script>

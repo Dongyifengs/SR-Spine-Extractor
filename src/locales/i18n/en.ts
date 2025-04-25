@@ -1,14 +1,28 @@
 // en.js
 export default {
-    message: {
-        paste: 'Paste',
-        clear: 'Clear',
-        parse: 'Parse',
-        pasteSuccess: 'Pasted clipboard content!',
-        pasteError: 'Paste failed! Error: {error}',
-        clearSuccess: 'Cleared!',
-        developing: 'In development!',
-        inputUrlPlaceholder: 'Please enter the URL:',
+    // mainUI -> App UI Text
+    mainUI: {
+        button: {
+            paste: 'Paste',
+            clear: 'Clear',
+            parse: 'Parse'
+        },
+        table: {
+
+        },
+        text: {
+            inputUrlPlaceholder: 'Please enter the URL:'
+        },
+        message: {
+            pasteSuccess: 'Pasted clipboard content!',
+            pasteError: 'Paste failed! Error: {error}',
+            clearSuccess: 'Cleared!',
+            developing: 'In development!',
+            SettingsSavedSuccessfully: 'Settings saved successfully!'
+        },
+        log: {
+            errOut: 'Error Log: {error}'
+        },
         language: {
             zh: 'Chinese',
             en: 'English',
