@@ -32,26 +32,23 @@ export default {
     settings: {
         table: {
             settings: '设置',
-            spineLocation: 'Spine.com 路径位置',
+            spineLocation: 'Spine位置',
             ExportLocation: '导出位置',
-            ConfigurationOption1: '配置选项1',
-            ConfigurationOption2: '配置选项2',
-            ConfigurationOption3: '配置选项3',
-            ConfigurationOption4: '配置选项4',
-            ConfigurationOption5: '配置选项5',
-            ConfigurationOption6: '配置选项6',
+            outMaterialFile: '导出素材文件',
+            outSpineFile: '导出Spine文件',
+            outAllFile: '导出页面所有文件',
+            theme: '主题',
+            numberOfSimultaneousFileProcessing: '同时文件处理数量',
             Cancel: '取消',
             Save: '保存'
         },
         text: {
             EnterSpineLocation: '请输入Spine.com的路径',
             EnterExportLocation : '请输入输出路径',
-            EnterOption1 : '配置选项1',
-            EnterOption2 : '配置选项2',
-            EnterOption3 : '配置选项3',
-            OptionA : '配置A',
-            OptionB : '配置B',
-            OptionC : '配置C',
+            themeSelect : '主题选择(默认亮色模式)',
+            lightMode : '浅色模式',
+            darkMode : '深色模式',
+            dependingOnTheSystemSelection : '根据系统选择',
         }
     }
 }

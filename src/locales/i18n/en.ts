@@ -1,57 +1,53 @@
-// en.js
+// en-US.js
 export default {
-    // mainUI -> App UI Text
+    // mainUI -> Text for the main page
     mainUI: {
         button: {
             paste: 'Paste',
             clear: 'Clear',
             parse: 'Parse'
         },
-        table: {
-
-        },
+        table: {},
         text: {
-            inputUrlPlaceholder: 'Please enter the URL:'
+            inputUrlPlaceholder: 'Please enter webpage URL:',
         },
         message: {
-            pasteSuccess: 'Pasted clipboard content!',
-            pasteError: 'Paste failed! Error: {error}',
+            pasteSuccess: 'Clipboard content pasted!',
+            pasteError: 'Paste failed! Please check error: {error}',
             clearSuccess: 'Cleared!',
             developing: 'In development!',
             SettingsSavedSuccessfully: 'Settings saved successfully!'
         },
         log: {
-            errOut: 'Error Log: {error}'
+            errOut: 'Error report: {error}'
         },
         language: {
             zh: 'Chinese',
             en: 'English',
-            currentLanguage: 'Current language is {language}'
+            currentLanguage: 'Current language: {language}'
         }
     },
     settings: {
         table: {
-            settings: "Settings",
-            spineLocation: "Spine.com Path",
-            ExportLocation: "Export Location",
-            ConfigurationOption1: "Configuration Option 1",
-            ConfigurationOption2: "Configuration Option 2",
-            ConfigurationOption3: "Configuration Option 3",
-            ConfigurationOption4: "Configuration Option 4",
-            ConfigurationOption5: "Configuration Option 5",
-            ConfigurationOption6: "Configuration Option 6",
-            Cancel: "Cancel",
-            Save: "Save"
+            settings: 'Settings',
+            spineLocation: 'Spine Location',
+            ExportLocation: 'Export Location',
+            outMaterialFile: 'Export Material Files',
+            outSpineFile: 'Export Spine Files',
+            outAllFile: 'Export All Page Files',
+            theme: 'Theme',
+            // numberOfSimultaneousFileProcessing: 'Number of Simultaneous File Processing',
+            numberOfSimultaneousFileProcessing: 'NOSFP', // ↑ Number of Simultaneous File Processing
+            Cancel: 'Cancel',
+            Save: 'Save'
         },
         text: {
-            EnterSpineLocation: "Please enter Spine.com path",
-            EnterExportLocation: "Please enter export location",
-            EnterOption1: "Configuration option 1",
-            EnterOption2: "Configuration option 2",
-            EnterOption3: "Configuration option 3",
-            OptionA: "Option A",
-            OptionB: "Option B",
-            OptionC: "Option C"
+            EnterSpineLocation: 'Please enter Spine.com path',
+            EnterExportLocation: 'Please enter output path',
+            themeSelect: 'Theme selection (default light mode)',
+            lightMode: 'Light Mode',
+            darkMode: 'Dark Mode',
+            dependingOnTheSystemSelection: 'Follow System Setting',
         }
     }
 }
