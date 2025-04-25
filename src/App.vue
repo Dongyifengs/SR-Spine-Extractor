@@ -23,11 +23,30 @@
     <ChangeLan/>
     <el-form label-width="150px">
       <el-form-item :label="$t('settings.table.spineLocation')">
-        <el-input v-model="settings.SpineLocation" :placeholder="$t('settings.text.EnterSpineLocation')"/>
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%">
+          <el-input
+              v-model="settings.SpineLocation"
+              :placeholder="$t('settings.text.EnterSpineLocation')"
+              style="flex: 1"
+          />
+          <el-button @click="selectSpineLocation">
+            {{ $t('settings.button.select') }}
+          </el-button>
+        </div>
       </el-form-item>
 
       <el-form-item :label="$t('settings.table.ExportLocation')">
-        <el-input v-model="settings.exportLocation" :placeholder="$t('settings.text.EnterExportLocation')"/>
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%">
+          <el-input
+              v-model="settings.exportLocation"
+              :placeholder="$t('settings.text.EnterExportLocation')"
+              style="flex: 1"
+          />
+          <el-button @click="selectExportLocation">
+            {{ $t('settings.button.select') }}
+          </el-button>
+
+        </div>
       </el-form-item>
 
       <el-form-item :label="$t('settings.table.theme')">
@@ -63,10 +82,11 @@
 </template>
 
 <script setup lang="ts">
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {ElMessage} from 'element-plus'
 import {Setting} from '@element-plus/icons-vue'
 import 'element-plus/theme-chalk/dark/css-vars.css';
+import {open} from '@tauri-apps/plugin-dialog';
 import ChangeLan from './locales/Language.vue'
 import {useI18n} from 'vue-i18n'
 
@@ -78,7 +98,7 @@ const showSettings = ref(true);
 const settings = ref({
   SpineLocation: '',
   exportLocation: '',
-  theme: '',
+  theme: 'lightMode',
   outMaterialFile: false,
   outSpineFile: false,
   outAllFile: false,
@@ -108,7 +128,59 @@ const parsing = async () => {
 
 // 保存设置
 const saveSettings = () => {
+  localStorage.setItem('appSettings', JSON.stringify(settings.value));
   ElMessage.success(t('mainUI.message.SettingsSavedSuccessfully'));
   showSettings.value = false;
 }
+
+// 加载页面加载本地设置数据
+const loadSettings = () => {
+  const savedSettings = localStorage.getItem('appSettings');
+  if (savedSettings) {
+    settings.value = JSON.parse(savedSettings);
+  }
+}
+
+// 选择Spine路径功能
+const selectSpineLocation = async () => {
+  try {
+    const selected = await open({
+      directory: false,
+      multiple: false,
+      title: t('settings.dialog.selectSpineDirectory'),
+    });
+
+    if (selected) {
+      // 在Tauri中，selected可能是字符串或字符串数组
+      settings.value.SpineLocation = Array.isArray(selected) ? selected[0] : selected;
+    }
+  } catch (error) {
+    ElMessage.error(t('settings.message.selectSpineLocationError', {error}));
+    console.error(t('settings.log.ErrorSelectingFileDirectory'), error);
+  }
+}
+
+// 选择输出目录功能
+const selectExportLocation = async () => {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: t('settings.dialog.selectExportLocation'),
+    });
+
+    if (selected) {
+      // 在Tauri中，selected可能是字符串或字符串数组
+      settings.value.exportLocation = Array.isArray(selected) ? selected[0] : selected;
+    }
+  } catch (error) {
+    ElMessage.error(t('settings.message.selectExportLocationError', {error}));
+    console.error(t('settings.log.ErrorSelectingOutDirectory'), error);
+  }
+}
+
+onMounted(() => {
+  loadSettings();
+});
+
 </script>

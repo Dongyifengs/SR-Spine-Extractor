@@ -49,6 +49,22 @@ export default {
             lightMode : '浅色模式',
             darkMode : '深色模式',
             dependingOnTheSystemSelection : '根据系统选择',
+        },
+        button: {
+            select: '选择'
+        },
+        message: {
+            selectSpineLocationError: '选择Spine位置错误',
+            selectExportLocationError: '选择导出位置错误'
+
+        },
+        dialog: {
+            selectSpineDirectory: '选择 Spine 目录',
+            selectExportLocation: '选择导出位置'
+        },
+        log: {
+            ErrorSelectingFileDirectory: '选择文件时出错：',
+            ErrorSelectingOutDirectory: '选择输出目录时出错：',
         }
     }
 }

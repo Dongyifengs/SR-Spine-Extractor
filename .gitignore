@@ -24,3 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 /.vscode/
+/auto-imports.d.ts
+/src-tauri/Cargo.lock
+/components.d.ts
+/package-lock.json

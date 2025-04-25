@@ -36,8 +36,7 @@ export default {
             outSpineFile: 'Export Spine Files',
             outAllFile: 'Export All Page Files',
             theme: 'Theme',
-            // numberOfSimultaneousFileProcessing: 'Number of Simultaneous File Processing',
-            numberOfSimultaneousFileProcessing: 'NOSFP', // ↑ Number of Simultaneous File Processing
+            numberOfSimultaneousFileProcessing: 'Number of Simultaneous File Processing',
             Cancel: 'Cancel',
             Save: 'Save'
         },
@@ -48,6 +47,21 @@ export default {
             lightMode: 'Light Mode',
             darkMode: 'Dark Mode',
             dependingOnTheSystemSelection: 'Follow System Setting',
+        },
+        button: {
+            select: 'Select'
+        },
+        message: {
+            selectSpineLocationError: 'Error selecting Spine location',
+            selectExportLocationError: 'Error selecting export location'
+        },
+        dialog: {
+            selectSpineDirectory: 'Select Spine Directory',
+            selectExportLocation: 'Select Export Location'
+        },
+        log: {
+            ErrorSelectingFileDirectory: 'Error selecting file directory:',
+            ErrorSelectingOutDirectory: 'Error selecting output directory:',
         }
     }
 }
