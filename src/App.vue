@@ -8,6 +8,7 @@
   <el-button type="warning" @click="paste()">{{ $t("mainUI.button.paste") }}</el-button>
   <el-button type="danger" :disabled="!inputURLText" @click="clear()">{{ $t("mainUI.button.clear") }}</el-button>
   <el-button type="success" :disabled="!inputURLText" @click="parsing()">{{ $t("mainUI.button.parse") }}</el-button>
+  <el-button type="success" @click="preview()">{{ $t("mainUI.button.preview") }}</el-button>
   <el-button type="primary" :icon="Setting" circle @click="showSettings = true"/>
 
 
@@ -87,12 +88,13 @@ import {ElMessage} from 'element-plus'
 import {Setting} from '@element-plus/icons-vue'
 import 'element-plus/theme-chalk/dark/css-vars.css';
 import {open} from '@tauri-apps/plugin-dialog';
+import {Command} from '@tauri-apps/plugin-shell'
 import ChangeLan from './locales/Language.vue'
 import {useI18n} from 'vue-i18n'
 
 const {t} = useI18n()
 const inputURLText = ref('');
-const showSettings = ref(true);
+const showSettings = ref(false);
 
 // 配置选项
 const settings = ref({
@@ -124,6 +126,40 @@ const clear = async () => {
 // 解析功能
 const parsing = async () => {
   ElMessage.success(t('mainUI.message.developing'));
+}
+
+// 预览功能
+const preview = async () => {
+  try {
+    // 检查 Spine 路径
+    if (!settings.value.SpineLocation) {
+      ElMessage.warning('请先设置 Spine 可执行文件路径');
+      return;
+    }
+
+    // 使用绝对路径更安全
+    const jarPath = 'C:\\Users\\15459\\Downloads\\skeletonViewer-4.2.40.jar';
+
+    // 创建命令对象
+    const command = Command.create('java', [
+      '-jar',
+      jarPath
+    ]);
+
+    // 执行命令
+    const result = await command.execute();
+
+    // 处理结果
+    if (result.code === 0) {
+      ElMessage.success('Spine 预览器启动成功');
+    } else {
+      ElMessage.error(`启动失败: ${result.stderr}`);
+    }
+
+  } catch (error) {
+    ElMessage.error(`预览时出错: ${error}`);
+    console.error('执行命令出错:', error);
+  }
 }
 
 // 保存设置

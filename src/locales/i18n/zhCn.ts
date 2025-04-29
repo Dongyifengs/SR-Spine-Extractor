@@ -5,7 +5,8 @@ export default {
         button: {
             paste: '粘贴',
             clear: '清除',
-            parse: '解析'
+            parse: '解析',
+            preview: '预览'
         },
         table: {
 
